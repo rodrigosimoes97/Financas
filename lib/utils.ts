@@ -13,6 +13,10 @@ export const formatDateBR = (date: string | Date) =>
 export const formatMonthBR = (date: string | Date) =>
   new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date(date));
 
+
+export const getMonthStartISO = (date: Date) =>
+  new Date(Date.UTC(date.getFullYear(), date.getMonth(), 1)).toISOString().slice(0, 10);
+
 export const typeToLabel = (type: EntryType) => (type === 'income' ? 'Receita' : 'Despesa');
 
 export const calculateMonthlyTotals = (transactions: Transaction[]) => {

@@ -2,15 +2,25 @@ import { CategoryPieChart } from '@/components/dashboard/category-pie-chart';
 import { MetricCard } from '@/components/dashboard/metric-card';
 import { QuickAddTransaction } from '@/components/forms/quick-add-transaction';
 import { PageHeader } from '@/components/app-shell/page-header';
-import { calculateMonthlyTotals, formatCurrencyBRL, formatMonthBR } from '@/lib/utils';
+import { calculateMonthlyTotals, formatCurrencyBRL, formatMonthBR, getMonthStartISO } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/server';
 import { ptBR } from '@/lib/i18n/pt-BR';
+import { Transaction } from '@/types/models';
+
+interface DashboardTransactionRow extends Omit<Transaction, 'category'> {
+  category?: { name: string; type: 'income' | 'expense' } | { name: string; type: 'income' | 'expense' }[];
+}
+
+interface DashboardGoalRow {
+  id: string;
+  monthly_limit: number | string;
+  month: string;
+  category?: { name: string } | { name: string }[];
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  const monthDate = monthStart.toISOString().slice(0, 10);
+  const monthDate = getMonthStartISO(new Date());
 
   const [{ data: transactions }, { data: categories }, { data: accounts }, { data: goals }] = await Promise.all([
     supabase
@@ -23,8 +33,18 @@ export default async function DashboardPage() {
     supabase.from('goals').select('id,monthly_limit,month, category:categories(name)').eq('month', monthDate)
   ]);
 
-  const totals = calculateMonthlyTotals(transactions ?? []);
-  const pieMap = (transactions ?? [])
+  const normalizedTransactions: Transaction[] = ((transactions ?? []) as DashboardTransactionRow[]).map((transaction) => ({
+    ...transaction,
+    category: Array.isArray(transaction.category) ? transaction.category[0] : transaction.category
+  }));
+
+  const normalizedGoals = ((goals ?? []) as DashboardGoalRow[]).map((goal) => ({
+    ...goal,
+    category: Array.isArray(goal.category) ? goal.category[0] : goal.category
+  }));
+
+  const totals = calculateMonthlyTotals(normalizedTransactions);
+  const pieMap = normalizedTransactions
     .filter((transaction) => transaction.type === 'expense')
     .reduce<Record<string, number>>((acc, transaction) => {
       const name = transaction.category?.name ?? 'Outros';
@@ -51,13 +71,13 @@ export default async function DashboardPage() {
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5 shadow-lg shadow-black/10">
           <h3 className="text-lg font-semibold">{ptBR.dashboard.goalsMonth}</h3>
           <p className="mb-4 text-sm text-zinc-400">{ptBR.dashboard.goalsHint}</p>
-          {(goals ?? []).length === 0 ? (
+          {normalizedGoals.length === 0 ? (
             <div className="rounded-xl border border-dashed border-zinc-700 px-3 py-8 text-center text-sm text-zinc-500">
-              {ptBR.states.noGoals}
+              {ptBR.states.noGoalsMonth}
             </div>
           ) : (
             <div className="space-y-2 text-sm">
-              {(goals ?? []).map((goal) => (
+              {normalizedGoals.map((goal) => (
                 <div key={goal.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-950/70 px-3 py-2">
                   <span>{goal.category?.name ?? ptBR.labels.category}</span>
                   <span className="font-medium">{formatCurrencyBRL(Number(goal.monthly_limit))}</span>

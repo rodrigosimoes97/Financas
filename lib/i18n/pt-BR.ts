@@ -22,6 +22,7 @@ export const ptBR = {
     account: 'Conta',
     category: 'Categoria',
     month: 'Mês',
+    goalMonth: 'Mês da meta',
     monthlyLimit: 'Limite mensal',
     name: 'Nome',
     allCategories: 'Todas as categorias',
@@ -46,6 +47,7 @@ export const ptBR = {
     noTransactions: 'Nenhuma transação cadastrada ainda.',
     noCategories: 'Nenhuma categoria cadastrada ainda.',
     noGoals: 'Nenhuma meta cadastrada ainda.',
+    noGoalsMonth: 'Nenhuma meta cadastrada para este mês.',
     noChartData: 'Sem despesas para exibir no gráfico.',
     loading: 'Carregando...'
   },

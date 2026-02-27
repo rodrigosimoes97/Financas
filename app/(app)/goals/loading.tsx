@@ -1,5 +1,14 @@
-import { ptBR } from '@/lib/i18n/pt-BR';
+function Skeleton({ className }: { className: string }) {
+  return <div className={`animate-pulse rounded-xl bg-zinc-800/70 ${className}`} />;
+}
 
 export default function LoadingGoals() {
-  return <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 text-zinc-400">{ptBR.states.loading}</div>;
+  return (
+    <section className="space-y-4">
+      <Skeleton className="h-20 w-full" />
+      <Skeleton className="h-24 w-full" />
+      <Skeleton className="h-20 w-full" />
+      <Skeleton className="h-20 w-full" />
+    </section>
+  );
 }

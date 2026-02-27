@@ -9,7 +9,7 @@ export async function signIn(formData: FormData) {
   const supabase = await createClient();
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { error: error.message };
+  if (error) return;
 
   redirect('/dashboard');
 }
@@ -20,7 +20,7 @@ export async function signUp(formData: FormData) {
   const supabase = await createClient();
 
   const { error } = await supabase.auth.signUp({ email, password });
-  if (error) return { error: error.message };
+  if (error) return;
 
   redirect('/login');
 }
