@@ -2,10 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-background text-foreground antialiased;
+:root {
+  color-scheme: dark;
 }
 
-.card {
-  @apply rounded-xl border border-border bg-card;
+body {
+  @apply bg-zinc-950 text-zinc-100 antialiased;
+  background-image: radial-gradient(circle at top, rgba(39, 39, 42, 0.35), transparent 45%);
+}
+
+* {
+  @apply border-zinc-800;
 }

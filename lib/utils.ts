@@ -1,11 +1,19 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { Transaction } from '@/types/models';
+import { Transaction, EntryType } from '@/types/models';
 
 export const cn = (...inputs: ClassValue[]) => twMerge(clsx(inputs));
 
-export const toCurrency = (value: number) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+export const formatCurrencyBRL = (value: number) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
+export const formatDateBR = (date: string | Date) =>
+  new Intl.DateTimeFormat('pt-BR').format(new Date(date));
+
+export const formatMonthBR = (date: string | Date) =>
+  new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date(date));
+
+export const typeToLabel = (type: EntryType) => (type === 'income' ? 'Receita' : 'Despesa');
 
 export const calculateMonthlyTotals = (transactions: Transaction[]) => {
   const income = transactions
