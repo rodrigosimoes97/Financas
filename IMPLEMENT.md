@@ -1,0 +1,5 @@
+- Siga o PLAN.md como fonte de verdade.
+- Faça mudanças pequenas por milestone.
+- Rode lint/tests ao final de cada milestone.
+- Não aumente escopo sem pedido explícito.
+- Atualize README quando mudar setup/arquitetura.
