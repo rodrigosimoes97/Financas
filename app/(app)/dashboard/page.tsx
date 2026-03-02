@@ -27,7 +27,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   nextMonth.setMonth(nextMonth.getMonth() + 1);
   const nextMonthDate = getMonthStartISO(nextMonth);
 
-  const [{ data: transactions }, { data: categories }, { data: accounts }, { data: goals }] = await Promise.all([
+  const [{ data: transactions }, { data: categories }, { data: accounts }, { data: goals }, { data: creditCards }] = await Promise.all([
     supabase
       .from('transactions')
       .select('id,user_id,account_id,category_id,amount,type,payment_method,description,date,created_at, category:categories(name,type), account:accounts(name)')
@@ -36,7 +36,8 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
       .order('date', { ascending: false }),
     supabase.from('categories').select('*').order('name'),
     supabase.from('accounts').select('*').order('name'),
-    supabase.from('goals').select('id,monthly_limit,month, category:categories(name)').eq('month', monthDate)
+    supabase.from('goals').select('id,monthly_limit,month, category:categories(name)').eq('month', monthDate),
+    supabase.from('credit_cards').select('*').eq('is_archived', false).order('name')
   ]);
 
   const normalizedTransactions: Transaction[] = ((transactions ?? []) as DashboardTransactionRow[]).map((transaction) => ({
@@ -72,7 +73,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
               <input type="month" name="month" defaultValue={selectedMonth} className="rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm" />
               <button className="ml-2 rounded-xl border border-zinc-700 px-3 py-2 text-sm hover:bg-zinc-800">Aplicar</button>
             </form>
-            <QuickAddTransaction accounts={accounts ?? []} categories={categories ?? []} />
+            <QuickAddTransaction accounts={accounts ?? []} categories={categories ?? []} creditCards={creditCards ?? []} />
           </div>
         }
       />

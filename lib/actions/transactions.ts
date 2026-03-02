@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { createCreditPurchase } from '@/lib/services/credit';
 
 type ActionResult = { ok: boolean; message?: string; error?: string };
 
@@ -13,19 +14,38 @@ export async function createTransaction(formData: FormData): Promise<ActionResul
 
   if (!user) return { ok: false, error: 'Usuário não autenticado.' };
 
-  const payload = {
-    user_id: user.id,
-    account_id: String(formData.get('account_id')),
-    category_id: String(formData.get('category_id')),
-    amount: Number(formData.get('amount')),
-    type: String(formData.get('type')),
-    payment_method: String(formData.get('payment_method')),
-    description: String(formData.get('description') || ''),
-    date: String(formData.get('date'))
-  };
+  const paymentMethod = String(formData.get('payment_method'));
+  if (paymentMethod === 'credit') {
+    try {
+      await createCreditPurchase({
+        user_id: user.id,
+        account_id: String(formData.get('account_id')),
+        category_id: String(formData.get('category_id')),
+        description: String(formData.get('description') || ''),
+        amount_total: Number(formData.get('amount')),
+        purchase_date: String(formData.get('date')),
+        credit_card_id: String(formData.get('credit_card_id')),
+        is_installment: String(formData.get('is_installment')) === 'true',
+        total_installments: Number(formData.get('total_installments') || 1)
+      });
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : 'Erro ao registrar compra no crédito.' };
+    }
+  } else {
+    const payload = {
+      user_id: user.id,
+      account_id: String(formData.get('account_id')),
+      category_id: String(formData.get('category_id')),
+      amount: Number(formData.get('amount')),
+      type: String(formData.get('type')),
+      payment_method: paymentMethod,
+      description: String(formData.get('description') || ''),
+      date: String(formData.get('date'))
+    };
 
-  const { error } = await supabase.from('transactions').insert(payload);
-  if (error) return { ok: false, error: error.message };
+    const { error } = await supabase.from('transactions').insert(payload);
+    if (error) return { ok: false, error: error.message };
+  }
 
   revalidatePath('/dashboard');
   revalidatePath('/transactions');

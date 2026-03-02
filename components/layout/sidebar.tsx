@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Landmark, Target, Tag, Wallet, LogOut, Building2 } from 'lucide-react';
+import { Landmark, Target, Tag, Wallet, LogOut, Building2, CreditCard } from 'lucide-react';
 import { signOut } from '@/lib/actions/auth';
 import { cn } from '@/lib/utils';
 import { ptBR } from '@/lib/i18n/pt-BR';
@@ -11,6 +11,7 @@ const navItems = [
   { href: '/dashboard', label: ptBR.nav.dashboard, icon: Landmark },
   { href: '/transactions', label: ptBR.nav.transactions, icon: Wallet },
   { href: '/accounts', label: ptBR.nav.accounts, icon: Building2 },
+  { href: '/cards', label: ptBR.nav.cards, icon: CreditCard },
   { href: '/categories', label: ptBR.nav.categories, icon: Tag },
   { href: '/goals', label: ptBR.nav.goals, icon: Target }
 ];

@@ -6,10 +6,11 @@ import { TransactionsManager } from '@/components/forms/transactions-manager';
 
 export default async function TransactionsPage() {
   const supabase = await createClient();
-  const [{ data: rows }, { data: categories }, { data: accounts }] = await Promise.all([
+  const [{ data: rows }, { data: categories }, { data: accounts }, { data: creditCards }] = await Promise.all([
     supabase.from('transactions').select('*').order('date', { ascending: false }),
     supabase.from('categories').select('*').order('name'),
-    supabase.from('accounts').select('*').order('name')
+    supabase.from('accounts').select('*').order('name'),
+    supabase.from('credit_cards').select('*').eq('is_archived', false).order('name')
   ]);
 
   return (
@@ -17,7 +18,7 @@ export default async function TransactionsPage() {
       <PageHeader
         title={ptBR.pages.transactionsTitle}
         subtitle="Gerencie suas movimentações financeiras com clareza."
-        actions={<QuickAddTransaction accounts={accounts ?? []} categories={categories ?? []} />}
+        actions={<QuickAddTransaction accounts={accounts ?? []} categories={categories ?? []} creditCards={creditCards ?? []} />}
       />
       <TransactionsManager rows={rows ?? []} categories={categories ?? []} accounts={accounts ?? []} />
     </section>

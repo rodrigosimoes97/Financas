@@ -4,6 +4,7 @@ export const ptBR = {
     dashboard: 'Painel',
     transactions: 'Transações',
     accounts: 'Contas',
+    cards: 'Cartões',
     categories: 'Categorias',
     goals: 'Metas',
     logout: 'Sair'
