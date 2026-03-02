@@ -61,3 +61,8 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
   revalidatePath('/transactions');
   return { ok: true, message: 'Exclusão realizada com sucesso.' };
 }
+
+// For useFormState compatibility
+export async function createTransactionState(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  return createTransaction(formData);
+}

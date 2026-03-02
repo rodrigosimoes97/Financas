@@ -18,7 +18,7 @@ export function QuickAddTransaction({ accounts, categories }: QuickAddTransactio
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
-  const { showToast } = useToast();
+  const toast = useToast();
 
   const validate = (formData: FormData) => {
     const amount = Number(formData.get('amount'));
@@ -52,10 +52,10 @@ export function QuickAddTransaction({ accounts, categories }: QuickAddTransactio
               const result = await createTransaction(formData);
               if (result.ok) {
                 formRef.current?.reset();
-                showToast(result.message ?? 'Cadastro realizado com sucesso.', 'success');
+                toast.success(result.message ?? 'Cadastro realizado com sucesso.');
                 setOpen(false);
               } else {
-                showToast(result.error ?? 'Ocorreu um erro ao salvar.', 'error');
+                toast.error(result.error ?? 'Ocorreu um erro ao salvar.');
               }
             }}
             className="mt-4 grid gap-3"

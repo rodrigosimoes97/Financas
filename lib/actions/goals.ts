@@ -49,3 +49,8 @@ export async function deleteGoal(id: string): Promise<ActionResult> {
   revalidatePath('/dashboard');
   return { ok: true, message: 'Exclusão realizada com sucesso.' };
 }
+
+// For useFormState compatibility
+export async function createGoalState(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  return createGoal(formData);
+}

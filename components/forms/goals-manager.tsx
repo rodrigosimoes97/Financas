@@ -1,37 +1,42 @@
 'use client';
 
-import { useRef } from 'react';
-import { createGoal, deleteGoal, updateGoal } from '@/lib/actions/goals';
+import { useEffect, useRef } from 'react';
+import { useFormState } from 'react-dom';
+import { createGoalState, deleteGoal, updateGoal } from '@/lib/actions/goals';
 import { ptBR } from '@/lib/i18n/pt-BR';
 import { formatCurrencyBRL, formatMonthBR } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import { SubmitButton } from '@/components/ui/submit-button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Category, Goal } from '@/types/models';
 
 const currentMonth = new Date().toISOString().slice(0, 7);
 const normalizeMonth = (monthValue: string) => `${monthValue}-01`;
+const initialState = { ok: false };
 
 export function GoalsManager({ rows, categories }: { rows: Goal[]; categories: Category[] }) {
-  const { showToast } = useToast();
+  const toast = useToast();
   const formRef = useRef<HTMLFormElement>(null);
+  const [state, createAction] = useFormState(async (_prev: { ok: boolean; message?: string; error?: string }, formData: FormData) => {
+    const monthInput = String(formData.get('month') || currentMonth);
+    formData.set('month', normalizeMonth(monthInput));
+    return createGoalState(_prev, formData);
+  }, initialState);
+
+  useEffect(() => {
+    if (state.ok) {
+      formRef.current?.reset();
+      const monthField = formRef.current?.elements.namedItem('month') as HTMLInputElement | null;
+      if (monthField) monthField.value = currentMonth;
+      toast.success(state.message ?? 'Cadastro realizado com sucesso.');
+    } else if (state.error) {
+      toast.error(state.error);
+    }
+  }, [state, toast]);
 
   return (
     <>
-      <form
-        ref={formRef}
-        action={async (formData) => {
-          const monthInput = String(formData.get('month') || currentMonth);
-          formData.set('month', normalizeMonth(monthInput));
-          const result = await createGoal(formData);
-          if (result.ok) {
-            formRef.current?.reset();
-            const monthField = formRef.current?.elements.namedItem('month') as HTMLInputElement | null;
-            if (monthField) monthField.value = currentMonth;
-            showToast(result.message ?? 'Cadastro realizado com sucesso.', 'success');
-          } else showToast(result.error ?? 'Ocorreu um erro ao salvar.', 'error');
-        }}
-        className="grid gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 md:grid-cols-4"
-      >
+      <form ref={formRef} action={createAction} className="grid gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 md:grid-cols-4">
         <label className="grid gap-1 text-sm">{ptBR.labels.category}<select name="category_id" className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5">{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
         <label className="grid gap-1 text-sm">{ptBR.labels.monthlyLimit}<input name="monthly_limit" type="number" step="0.01" required className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5" /></label>
         <label className="grid gap-1 text-sm">{ptBR.labels.goalMonth}<input name="month" type="month" defaultValue={currentMonth} required className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5" /></label>
@@ -39,7 +44,7 @@ export function GoalsManager({ rows, categories }: { rows: Goal[]; categories: C
       </form>
 
       {rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-zinc-700 px-4 py-12 text-center text-zinc-400">{ptBR.states.noGoals}</div>
+        <EmptyState title={ptBR.states.noGoals} />
       ) : (
         <div className="space-y-2">
           {rows.map((goal) => (
@@ -49,8 +54,8 @@ export function GoalsManager({ rows, categories }: { rows: Goal[]; categories: C
                 const monthInput = String(formData.get('month') || goal.month.slice(0, 7));
                 formData.set('month', normalizeMonth(monthInput));
                 const result = await updateGoal(goal.id, formData);
-                if (result.ok) showToast(result.message ?? 'Atualização realizada com sucesso.', 'success');
-                else showToast(result.error ?? 'Ocorreu um erro ao salvar.', 'error');
+                if (result.ok) toast.success(result.message ?? 'Atualização realizada com sucesso.');
+                else toast.error(result.error ?? 'Ocorreu um erro ao salvar.');
               }}
               className="grid gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 transition hover:border-zinc-700 md:grid-cols-5"
             >
@@ -61,8 +66,8 @@ export function GoalsManager({ rows, categories }: { rows: Goal[]; categories: C
               <button
                 formAction={async () => {
                   const result = await deleteGoal(goal.id);
-                  if (result.ok) showToast(result.message ?? 'Exclusão realizada com sucesso.', 'success');
-                  else showToast(result.error ?? 'Ocorreu um erro ao excluir.', 'error');
+                  if (result.ok) toast.success(result.message ?? 'Exclusão realizada com sucesso.');
+                  else toast.error(result.error ?? 'Ocorreu um erro ao excluir.');
                 }}
                 className="rounded-xl bg-rose-500/80 px-3 py-2.5 text-sm font-medium text-white hover:bg-rose-500"
               >

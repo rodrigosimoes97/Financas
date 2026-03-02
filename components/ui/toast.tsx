@@ -11,25 +11,29 @@ interface ToastItem {
   type: ToastType;
 }
 
-interface ToastContextValue {
-  showToast: (message: string, type?: ToastType) => void;
+interface ToastApi {
+  success: (message: string) => void;
+  error: (message: string) => void;
 }
 
-const ToastContext = createContext<ToastContextValue | null>(null);
+const ToastContext = createContext<ToastApi | null>(null);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
 
-  const showToast = useCallback((message: string, type: ToastType = 'success') => {
+  const push = useCallback((message: string, type: ToastType) => {
     const id = Date.now() + Math.random();
     setItems((prev) => [...prev, { id, message, type }]);
     setTimeout(() => setItems((prev) => prev.filter((item) => item.id !== id)), 3000);
   }, []);
 
-  const value = useMemo(() => ({ showToast }), [showToast]);
+  const toast = useMemo<ToastApi>(() => ({
+    success: (message) => push(message, 'success'),
+    error: (message) => push(message, 'error')
+  }), [push]);
 
   return (
-    <ToastContext.Provider value={value}>
+    <ToastContext.Provider value={toast}>
       {children}
       <div className="fixed right-4 top-4 z-50 space-y-2">
         {items.map((item) => (

@@ -2,6 +2,7 @@
 
 import { useFormStatus } from 'react-dom';
 import { cn } from '@/lib/utils';
+import { Spinner } from '@/components/ui/spinner';
 
 import type { ButtonHTMLAttributes } from 'react';
 
@@ -16,7 +17,7 @@ export function SubmitButton({ className, children, pendingText = 'Salvando...',
     <button disabled={pending} className={cn('disabled:cursor-not-allowed disabled:opacity-70', className)} {...props}>
       {pending ? (
         <span className="inline-flex items-center gap-2">
-          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          <Spinner />
           {pendingText}
         </span>
       ) : (

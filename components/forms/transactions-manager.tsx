@@ -1,11 +1,13 @@
 'use client';
 
-import { useRef } from 'react';
-import { createTransaction, deleteTransaction, updateTransaction } from '@/lib/actions/transactions';
+import { useEffect, useRef } from 'react';
+import { useFormState } from 'react-dom';
+import { createTransactionState, deleteTransaction, updateTransaction } from '@/lib/actions/transactions';
 import { ptBR } from '@/lib/i18n/pt-BR';
 import { formatCurrencyBRL, formatDateBR, formatMonthBR, typeToLabel } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import { SubmitButton } from '@/components/ui/submit-button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Account, Category, Transaction } from '@/types/models';
 
 interface Props {
@@ -14,9 +16,21 @@ interface Props {
   accounts: Account[];
 }
 
+const initialState = { ok: false };
+
 export function TransactionsManager({ rows, categories, accounts }: Props) {
-  const { showToast } = useToast();
+  const toast = useToast();
   const createFormRef = useRef<HTMLFormElement>(null);
+  const [state, createAction] = useFormState(createTransactionState, initialState);
+
+  useEffect(() => {
+    if (state.ok) {
+      createFormRef.current?.reset();
+      toast.success(state.message ?? 'Cadastro realizado com sucesso.');
+    } else if (state.error) {
+      toast.error(state.error);
+    }
+  }, [state, toast]);
 
   return (
     <>
@@ -30,19 +44,7 @@ export function TransactionsManager({ rows, categories, accounts }: Props) {
         </div>
       </div>
 
-      <form
-        ref={createFormRef}
-        action={async (formData) => {
-          const result = await createTransaction(formData);
-          if (result.ok) {
-            createFormRef.current?.reset();
-            showToast(result.message ?? 'Cadastro realizado com sucesso.', 'success');
-          } else {
-            showToast(result.error ?? 'Ocorreu um erro ao salvar.', 'error');
-          }
-        }}
-        className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4"
-      >
+      <form ref={createFormRef} action={createAction} className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
         <h3 className="mb-3 text-sm font-medium text-zinc-300">{ptBR.actions.newTransaction}</h3>
         <div className="grid gap-2 md:grid-cols-7">
           <input name="description" placeholder={ptBR.labels.description} className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5" />
@@ -56,7 +58,7 @@ export function TransactionsManager({ rows, categories, accounts }: Props) {
       </form>
 
       {rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-zinc-700 px-4 py-12 text-center text-zinc-400">{ptBR.states.noTransactions}</div>
+        <EmptyState title={ptBR.states.noTransactions} />
       ) : (
         <div className="space-y-2">
           {rows.map((tx) => (
@@ -64,8 +66,8 @@ export function TransactionsManager({ rows, categories, accounts }: Props) {
               key={tx.id}
               action={async (formData) => {
                 const result = await updateTransaction(tx.id, formData);
-                if (result.ok) showToast(result.message ?? 'Atualização realizada com sucesso.', 'success');
-                else showToast(result.error ?? 'Ocorreu um erro ao salvar.', 'error');
+                if (result.ok) toast.success(result.message ?? 'Atualização realizada com sucesso.');
+                else toast.error(result.error ?? 'Ocorreu um erro ao salvar.');
               }}
               className="grid gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 transition hover:border-zinc-700 hover:bg-zinc-900 md:grid-cols-8"
             >
@@ -79,8 +81,8 @@ export function TransactionsManager({ rows, categories, accounts }: Props) {
               <button
                 formAction={async () => {
                   const result = await deleteTransaction(tx.id);
-                  if (result.ok) showToast(result.message ?? 'Exclusão realizada com sucesso.', 'success');
-                  else showToast(result.error ?? 'Ocorreu um erro ao excluir.', 'error');
+                  if (result.ok) toast.success(result.message ?? 'Exclusão realizada com sucesso.');
+                  else toast.error(result.error ?? 'Ocorreu um erro ao excluir.');
                 }}
                 className="rounded-xl bg-rose-500/80 px-3 py-2.5 text-sm font-medium text-white hover:bg-rose-500"
               >

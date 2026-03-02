@@ -41,3 +41,8 @@ export async function deleteCategory(id: string): Promise<ActionResult> {
   revalidatePath('/categories');
   return { ok: true, message: 'Exclusão realizada com sucesso.' };
 }
+
+// For useFormState compatibility
+export async function createCategoryState(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  return createCategory(formData);
+}
