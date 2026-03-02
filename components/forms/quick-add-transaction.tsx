@@ -19,14 +19,16 @@ export function QuickAddTransaction({ accounts, categories }: QuickAddTransactio
   const [open, setOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const toast = useToast();
+  const hasSingleAccount = accounts.length === 1;
 
   const validate = (formData: FormData) => {
     const amount = Number(formData.get('amount'));
     const date = String(formData.get('date') || '');
     const account = String(formData.get('account_id') || '');
     const category = String(formData.get('category_id') || '');
+    const paymentMethod = String(formData.get('payment_method') || '');
 
-    if (!amount || !date || !account || !category) {
+    if (!amount || !date || !account || !category || !paymentMethod) {
       setError(ptBR.modal.validation);
       return false;
     }
@@ -48,6 +50,9 @@ export function QuickAddTransaction({ accounts, categories }: QuickAddTransactio
           <form
             ref={formRef}
             action={async (formData) => {
+              if (hasSingleAccount) {
+                formData.set('account_id', accounts[0].id);
+              }
               if (!validate(formData)) return;
               const result = await createTransaction(formData);
               if (result.ok) {
@@ -77,17 +82,30 @@ export function QuickAddTransaction({ accounts, categories }: QuickAddTransactio
             <div className="grid gap-3 md:grid-cols-3">
               <label className="grid gap-1 text-sm">
                 {ptBR.labels.type}
-                <select name="type" className="rounded-xl border border-zinc-800 bg-zinc-900 p-2.5"><option value="income">Receita</option><option value="expense">Despesa</option></select>
+                <select name="type" defaultValue="expense" className="rounded-xl border border-zinc-800 bg-zinc-900 p-2.5"><option value="income">Receita</option><option value="expense">Despesa</option></select>
               </label>
-              <label className="grid gap-1 text-sm">
-                {ptBR.labels.account}
-                <select name="account_id" required className="rounded-xl border border-zinc-800 bg-zinc-900 p-2.5">{accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}</select>
-              </label>
+              {!hasSingleAccount ? (
+                <label className="grid gap-1 text-sm">
+                  {ptBR.labels.account}
+                  <select name="account_id" required className="rounded-xl border border-zinc-800 bg-zinc-900 p-2.5">{accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}</select>
+                </label>
+              ) : (
+                <input type="hidden" name="account_id" value={accounts[0]?.id ?? ''} />
+              )}
               <label className="grid gap-1 text-sm">
                 {ptBR.labels.category}
                 <select name="category_id" required className="rounded-xl border border-zinc-800 bg-zinc-900 p-2.5">{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select>
               </label>
             </div>
+            <label className="grid gap-1 text-sm">
+              {ptBR.labels.paymentMethod}
+              <select name="payment_method" defaultValue="pix" required className="rounded-xl border border-zinc-800 bg-zinc-900 p-2.5">
+                <option value="credit">{ptBR.paymentMethod.credit}</option>
+                <option value="debit">{ptBR.paymentMethod.debit}</option>
+                <option value="pix">{ptBR.paymentMethod.pix}</option>
+                <option value="cash">{ptBR.paymentMethod.cash}</option>
+              </select>
+            </label>
             {error && <p className="rounded-xl border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-300">{error}</p>}
             <SubmitButton className="mt-1 rounded-xl bg-emerald-400 px-3 py-2.5 font-medium text-emerald-950 hover:bg-emerald-300">{ptBR.actions.save}</SubmitButton>
           </form>

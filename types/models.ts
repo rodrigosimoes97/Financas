@@ -1,4 +1,5 @@
 export type EntryType = 'income' | 'expense';
+export type PaymentMethod = 'credit' | 'debit' | 'pix' | 'cash';
 
 export interface Account {
   id: string;
@@ -22,10 +23,12 @@ export interface Transaction {
   category_id: string;
   amount: number;
   type: EntryType;
+  payment_method?: PaymentMethod;
   description: string | null;
   date: string;
   created_at: string;
   category?: Pick<Category, 'name' | 'type'>;
+  account?: Pick<Account, 'name'>;
 }
 
 export interface Goal {

@@ -19,6 +19,7 @@ export async function createTransaction(formData: FormData): Promise<ActionResul
     category_id: String(formData.get('category_id')),
     amount: Number(formData.get('amount')),
     type: String(formData.get('type')),
+    payment_method: String(formData.get('payment_method')),
     description: String(formData.get('description') || ''),
     date: String(formData.get('date'))
   };
@@ -33,16 +34,19 @@ export async function createTransaction(formData: FormData): Promise<ActionResul
 
 export async function updateTransaction(id: string, formData: FormData): Promise<ActionResult> {
   const supabase = await createClient();
+  const payload = {
+    account_id: String(formData.get('account_id')),
+    category_id: String(formData.get('category_id')),
+    amount: Number(formData.get('amount')),
+    type: String(formData.get('type')),
+    description: String(formData.get('description') || ''),
+    date: String(formData.get('date'))
+  };
+
+  const paymentMethod = formData.get('payment_method');
   const { error } = await supabase
     .from('transactions')
-    .update({
-      account_id: String(formData.get('account_id')),
-      category_id: String(formData.get('category_id')),
-      amount: Number(formData.get('amount')),
-      type: String(formData.get('type')),
-      description: String(formData.get('description') || ''),
-      date: String(formData.get('date'))
-    })
+    .update(paymentMethod ? { ...payload, payment_method: String(paymentMethod) } : payload)
     .eq('id', id);
 
   if (error) return { ok: false, error: error.message };
@@ -62,7 +66,6 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
   return { ok: true, message: 'Exclusão realizada com sucesso.' };
 }
 
-// For useFormState compatibility
 export async function createTransactionState(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   return createTransaction(formData);
 }

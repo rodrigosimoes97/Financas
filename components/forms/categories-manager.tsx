@@ -7,9 +7,10 @@ import { ptBR } from '@/lib/i18n/pt-BR';
 import { useToast } from '@/components/ui/toast';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { EmptyState } from '@/components/ui/empty-state';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Category } from '@/types/models';
 
-const initialState = { ok: false };
+const initialState: { ok: boolean; message?: string; error?: string } = { ok: false };
 
 export function CategoriesManager({ rows }: { rows: Category[] }) {
   const toast = useToast();
@@ -49,17 +50,16 @@ export function CategoriesManager({ rows }: { rows: Category[] }) {
             >
               <input name="name" defaultValue={category.name} className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5" />
               <select name="type" defaultValue={category.type} className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5"><option value="expense">Despesa</option><option value="income">Receita</option></select>
-              <SubmitButton className="rounded-xl border border-zinc-700 px-3 py-2.5 text-sm hover:bg-zinc-800">{ptBR.actions.save}</SubmitButton>
-              <button
-                formAction={async () => {
+              <SubmitButton className="rounded-xl bg-emerald-500 px-3 py-2.5 text-sm font-medium text-white hover:bg-emerald-400">{ptBR.actions.save}</SubmitButton>
+              <ConfirmDialog
+                triggerLabel={ptBR.actions.delete}
+                triggerClassName="rounded-xl bg-rose-500/80 px-3 py-2.5 text-sm font-medium text-white hover:bg-rose-500"
+                onConfirm={async () => {
                   const result = await deleteCategory(category.id);
                   if (result.ok) toast.success(result.message ?? 'Exclusão realizada com sucesso.');
                   else toast.error(result.error ?? 'Ocorreu um erro ao excluir.');
                 }}
-                className="rounded-xl bg-rose-500/80 px-3 py-2.5 text-sm font-medium text-white hover:bg-rose-500"
-              >
-                {ptBR.actions.delete}
-              </button>
+              />
             </form>
           ))}
         </div>

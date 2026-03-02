@@ -8,11 +8,12 @@ import { formatCurrencyBRL, formatMonthBR } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { EmptyState } from '@/components/ui/empty-state';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Category, Goal } from '@/types/models';
 
 const currentMonth = new Date().toISOString().slice(0, 7);
 const normalizeMonth = (monthValue: string) => `${monthValue}-01`;
-const initialState = { ok: false };
+const initialState: { ok: boolean; message?: string; error?: string } = { ok: false };
 
 export function GoalsManager({ rows, categories }: { rows: Goal[]; categories: Category[] }) {
   const toast = useToast();
@@ -62,17 +63,16 @@ export function GoalsManager({ rows, categories }: { rows: Goal[]; categories: C
               <select name="category_id" defaultValue={goal.category_id} className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5">{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
               <input name="monthly_limit" type="number" step="0.01" defaultValue={Number(goal.monthly_limit)} className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5" />
               <input name="month" type="month" defaultValue={goal.month.slice(0, 7)} aria-label={ptBR.labels.goalMonth} className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5" />
-              <SubmitButton className="rounded-xl border border-zinc-700 px-3 py-2.5 text-sm hover:bg-zinc-800">{ptBR.actions.save}</SubmitButton>
-              <button
-                formAction={async () => {
+              <SubmitButton className="rounded-xl bg-emerald-500 px-3 py-2.5 text-sm font-medium text-white hover:bg-emerald-400">{ptBR.actions.save}</SubmitButton>
+              <ConfirmDialog
+                triggerLabel={ptBR.actions.delete}
+                triggerClassName="rounded-xl bg-rose-500/80 px-3 py-2.5 text-sm font-medium text-white hover:bg-rose-500"
+                onConfirm={async () => {
                   const result = await deleteGoal(goal.id);
                   if (result.ok) toast.success(result.message ?? 'Exclusão realizada com sucesso.');
                   else toast.error(result.error ?? 'Ocorreu um erro ao excluir.');
                 }}
-                className="rounded-xl bg-rose-500/80 px-3 py-2.5 text-sm font-medium text-white hover:bg-rose-500"
-              >
-                {ptBR.actions.delete}
-              </button>
+              />
               <div className="md:col-span-5 text-xs text-zinc-500">
                 {goal.category?.name ?? ptBR.labels.category} • {formatCurrencyBRL(Number(goal.monthly_limit))} • {formatMonthBR(goal.month)}
               </div>
