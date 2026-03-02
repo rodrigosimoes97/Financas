@@ -1,6 +1,8 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { formatCurrencyBRL, formatDateBR, formatMonthBR, getMonthStartISO } from '@/lib/utils';
+import { listInvoicesByCard } from '@/lib/actions/credit-cards';
 import { InvoiceActions } from '@/components/cards/invoice-actions';
 
 export default async function CardDetailPage({ params }: { params: { id: string } }) {
@@ -10,53 +12,7 @@ export default async function CardDetailPage({ params }: { params: { id: string 
   const { data: card } = await supabase.from('credit_cards').select('*').eq('id', params.id).single();
   if (!card) notFound();
 
-  const { data: invoices } = await supabase
-    .from('invoices')
-    .select('*')
-    .eq('credit_card_id', params.id)
-    .order('reference_month', { ascending: false });
-
-  const invoice = (invoices ?? []).find((inv) => inv.reference_month === month) ?? null;
-  const upcomingInvoices = (invoices ?? []).filter((inv) => inv.reference_month > month).slice(0, 12);
-
-  const { data: invoiceTransactions } = await supabase
-    .from('transactions')
-    .select('id,description,amount,date,installment_group_id,installment_number,total_installments')
-    .eq('invoice_id', invoice?.id ?? '00000000-0000-0000-0000-000000000000')
-    .order('date', { ascending: false })
-    .limit(10);
-
-  const { data: groups } = await supabase
-    .from('installment_groups')
-    .select('*')
-    .eq('credit_card_id', params.id)
-    .order('created_at', { ascending: false });
-
-  const groupedProgress = await Promise.all((groups ?? []).map(async (group) => {
-    const { data: txs } = await supabase
-      .from('transactions')
-      .select('installment_number,total_installments,date,amount,invoice_id')
-      .eq('installment_group_id', group.id)
-      .order('installment_number', { ascending: true });
-
-    const invoiceIds = Array.from(new Set((txs ?? []).map((t) => t.invoice_id).filter(Boolean)));
-    const paidInvoices = new Set<string>();
-
-    if (invoiceIds.length > 0) {
-      const { data: invRows } = await supabase
-        .from('invoices')
-        .select('id,status')
-        .in('id', invoiceIds as string[]);
-      (invRows ?? []).forEach((row) => {
-        if (row.status === 'paid') paidInvoices.add(row.id);
-      });
-    }
-
-    const paidCount = (txs ?? []).filter((t) => t.invoice_id && paidInvoices.has(t.invoice_id)).length;
-    const nextInstallment = (txs ?? []).find((t) => !(t.invoice_id && paidInvoices.has(t.invoice_id))) ?? txs?.[txs.length - 1];
-
-    return { group, paidCount, nextInstallment, txs: txs ?? [] };
-  }));
+  const invoices = await listInvoicesByCard(params.id);
 
   return (
     <section className="space-y-5">
@@ -66,55 +22,31 @@ export default async function CardDetailPage({ params }: { params: { id: string 
       </header>
 
       <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
-        <h3 className="text-lg font-semibold">Fatura atual ({formatMonthBR(month)})</h3>
-        <p className="mt-2">Total: <b>{formatCurrencyBRL(Number(invoice?.total_amount ?? 0))}</b> • Status: {invoice?.status ?? 'open'}</p>
-        <div className="mt-3 flex gap-2">
-          <a href="#lancamentos" className="rounded-xl border border-zinc-700 px-3 py-2 text-sm hover:bg-zinc-800">Ver lançamentos</a>
-          {invoice?.id ? <InvoiceActions invoiceId={invoice.id} /> : null}
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
-        <h3 className="mb-3 text-lg font-semibold">Próximas faturas</h3>
-        <div className="space-y-2 text-sm">
-          {upcomingInvoices.length === 0 ? <p className="text-zinc-500">Sem próximas faturas geradas.</p> : null}
-          {upcomingInvoices.map((inv) => (
-            <div key={inv.id} className="flex justify-between rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2">
-              <span>{formatMonthBR(inv.reference_month)}</span>
-              <span>{formatCurrencyBRL(Number(inv.total_amount))} • {inv.status}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section id="lancamentos" className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
-        <h3 className="mb-3 text-lg font-semibold">Lançamentos da fatura atual</h3>
-        <div className="space-y-2">
-          {(invoiceTransactions ?? []).map((tx) => (
-            <div key={tx.id} className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
-              <div className="flex justify-between"><span>{tx.description || 'Transação'}</span><b>{formatCurrencyBRL(Number(tx.amount))}</b></div>
-              <div className="text-xs text-zinc-500">{formatDateBR(tx.date)} {tx.installment_number ? `• ${tx.installment_number}/${tx.total_installments}` : ''}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
-        <h3 className="mb-3 text-lg font-semibold">Parcelas ativas</h3>
-        <div className="space-y-3">
-          {groupedProgress.map(({ group, paidCount, nextInstallment, txs }) => (
-            <div key={group.id} className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3">
-              <div className="flex justify-between">
-                <span>{group.description || 'Compra parcelada'}</span>
-                <span>{formatCurrencyBRL(Number(group.total_amount))}</span>
-              </div>
-              <p className="text-sm text-zinc-400">{paidCount}/{group.total_installments} parcelas • Próxima: {nextInstallment ? `${formatMonthBR(nextInstallment.date)} (${formatCurrencyBRL(Number(nextInstallment.amount))})` : '—'}</p>
-              <div className="mt-2 grid gap-1 text-xs text-zinc-500">
-                {txs.map((t) => <span key={`${group.id}-${t.installment_number}`}>{t.installment_number}/{t.total_installments} • {formatMonthBR(t.date)} • {formatCurrencyBRL(Number(t.amount))}</span>)}
-              </div>
-            </div>
-          ))}
-        </div>
+        <h3 className="mb-3 text-lg font-semibold">Faturas</h3>
+        {invoices.length === 0 ? (
+          <p className="text-sm text-zinc-500">Nenhuma fatura encontrada.</p>
+        ) : (
+          <div className="space-y-2">
+            {invoices.map((invoice) => {
+              const isCurrent = invoice.reference_month === month;
+              return (
+                <div key={invoice.id} className={`rounded-xl border p-3 ${isCurrent ? 'border-emerald-700/70 bg-emerald-950/20' : 'border-zinc-800 bg-zinc-950/60'}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <Link href={`/cards/${params.id}/invoices/${invoice.id}`} className="flex-1 hover:underline">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{formatMonthBR(invoice.reference_month)}</span>
+                        {isCurrent ? <span className="rounded-full bg-emerald-900/60 px-2 py-0.5 text-xs text-emerald-300">Atual</span> : null}
+                      </div>
+                      <p className="mt-1 text-sm text-zinc-400">Total: {formatCurrencyBRL(Number(invoice.total_amount))} • Status: {invoice.status}</p>
+                      <p className="text-xs text-zinc-500">Fechamento: {formatDateBR(invoice.closing_date)} • Vencimento: {formatDateBR(invoice.due_date)}</p>
+                    </Link>
+                    {invoice.status !== 'paid' ? <InvoiceActions invoiceId={invoice.id} /> : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
     </section>
   );

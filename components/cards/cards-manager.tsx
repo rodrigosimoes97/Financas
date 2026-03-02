@@ -7,20 +7,19 @@ import { createCreditCardState, deleteCreditCard } from '@/lib/actions/credit-ca
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { useToast } from '@/components/ui/toast';
-import { formatCurrencyBRL, formatMonthBR } from '@/lib/utils';
+import { formatCurrencyBRL } from '@/lib/utils';
 
-interface CardWithInvoice {
+interface CardItem {
   id: string;
   name: string;
   closing_day: number;
   due_day: number;
   limit_amount: number | null;
-  invoice: { total_amount: number; status: string } | null;
 }
 
 const initialState: { ok: boolean; message?: string; error?: string } = { ok: false };
 
-export function CardsManager({ cards }: { cards: CardWithInvoice[] }) {
+export function CardsManager({ cards }: { cards: CardItem[] }) {
   const toast = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const [state, action] = useFormState(createCreditCardState, initialState);
@@ -47,7 +46,11 @@ export function CardsManager({ cards }: { cards: CardWithInvoice[] }) {
       {cards.map((card) => (
         <div key={card.id} className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
           <div className="flex items-center justify-between">
-            <Link href={`/cards/${card.id}`} className="font-medium hover:underline">{card.name}</Link>
+            <div>
+              <p className="font-medium">{card.name}</p>
+              <p className="mt-1 text-sm text-zinc-400">Fechamento: dia {card.closing_day} • Vencimento: dia {card.due_day} • Limite: {card.limit_amount ? formatCurrencyBRL(Number(card.limit_amount)) : '—'}</p>
+              <Link href={`/cards/${card.id}`} className="mt-2 inline-block text-sm text-emerald-300 hover:underline">Ver faturas</Link>
+            </div>
             <ConfirmDialog
               triggerLabel="Excluir"
               triggerClassName="rounded-xl bg-rose-500/80 px-3 py-2 text-sm font-medium text-white hover:bg-rose-500"
@@ -58,7 +61,6 @@ export function CardsManager({ cards }: { cards: CardWithInvoice[] }) {
               }}
             />
           </div>
-          <p className="mt-2 text-sm text-zinc-400">{formatMonthBR(new Date())} • Fatura atual: {formatCurrencyBRL(Number(card.invoice?.total_amount ?? 0))} • Limite: {card.limit_amount ? formatCurrencyBRL(Number(card.limit_amount)) : '—'}</p>
         </div>
       ))}
     </div>

@@ -43,3 +43,15 @@ export async function markInvoiceAsPaid(invoiceId: string): Promise<ActionResult
   revalidatePath('/cards');
   return { ok: true, message: 'Fatura marcada como paga.' };
 }
+
+export async function listInvoicesByCard(cardId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('invoices')
+    .select('id,reference_month,closing_date,due_date,total_amount,status')
+    .eq('credit_card_id', cardId)
+    .order('reference_month', { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
