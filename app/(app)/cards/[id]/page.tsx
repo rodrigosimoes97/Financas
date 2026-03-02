@@ -10,12 +10,14 @@ export default async function CardDetailPage({ params }: { params: { id: string 
   const { data: card } = await supabase.from('credit_cards').select('*').eq('id', params.id).single();
   if (!card) notFound();
 
-  const { data: invoice } = await supabase
+  const { data: invoices } = await supabase
     .from('invoices')
     .select('*')
     .eq('credit_card_id', params.id)
-    .eq('reference_month', month)
-    .maybeSingle();
+    .order('reference_month', { ascending: false });
+
+  const invoice = (invoices ?? []).find((inv) => inv.reference_month === month) ?? null;
+  const upcomingInvoices = (invoices ?? []).filter((inv) => inv.reference_month > month).slice(0, 12);
 
   const { data: invoiceTransactions } = await supabase
     .from('transactions')
@@ -33,12 +35,25 @@ export default async function CardDetailPage({ params }: { params: { id: string 
   const groupedProgress = await Promise.all((groups ?? []).map(async (group) => {
     const { data: txs } = await supabase
       .from('transactions')
-      .select('installment_number,total_installments,date,amount')
+      .select('installment_number,total_installments,date,amount,invoice_id')
       .eq('installment_group_id', group.id)
       .order('installment_number', { ascending: true });
 
-    const paidCount = (txs ?? []).filter((t) => new Date(t.date) < new Date()).length;
-    const nextInstallment = (txs ?? []).find((t) => new Date(t.date) >= new Date()) ?? txs?.[txs.length - 1];
+    const invoiceIds = Array.from(new Set((txs ?? []).map((t) => t.invoice_id).filter(Boolean)));
+    const paidInvoices = new Set<string>();
+
+    if (invoiceIds.length > 0) {
+      const { data: invRows } = await supabase
+        .from('invoices')
+        .select('id,status')
+        .in('id', invoiceIds as string[]);
+      (invRows ?? []).forEach((row) => {
+        if (row.status === 'paid') paidInvoices.add(row.id);
+      });
+    }
+
+    const paidCount = (txs ?? []).filter((t) => t.invoice_id && paidInvoices.has(t.invoice_id)).length;
+    const nextInstallment = (txs ?? []).find((t) => !(t.invoice_id && paidInvoices.has(t.invoice_id))) ?? txs?.[txs.length - 1];
 
     return { group, paidCount, nextInstallment, txs: txs ?? [] };
   }));
@@ -50,12 +65,25 @@ export default async function CardDetailPage({ params }: { params: { id: string 
         <p className="mt-1 text-sm text-zinc-400">Limite: {card.limit_amount ? formatCurrencyBRL(Number(card.limit_amount)) : '—'} • Fechamento dia {card.closing_day} • Vencimento dia {card.due_day}</p>
       </header>
 
-      <section id="lancamentos" className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
+      <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
         <h3 className="text-lg font-semibold">Fatura atual ({formatMonthBR(month)})</h3>
         <p className="mt-2">Total: <b>{formatCurrencyBRL(Number(invoice?.total_amount ?? 0))}</b> • Status: {invoice?.status ?? 'open'}</p>
         <div className="mt-3 flex gap-2">
           <a href="#lancamentos" className="rounded-xl border border-zinc-700 px-3 py-2 text-sm hover:bg-zinc-800">Ver lançamentos</a>
           {invoice?.id ? <InvoiceActions invoiceId={invoice.id} /> : null}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
+        <h3 className="mb-3 text-lg font-semibold">Próximas faturas</h3>
+        <div className="space-y-2 text-sm">
+          {upcomingInvoices.length === 0 ? <p className="text-zinc-500">Sem próximas faturas geradas.</p> : null}
+          {upcomingInvoices.map((inv) => (
+            <div key={inv.id} className="flex justify-between rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2">
+              <span>{formatMonthBR(inv.reference_month)}</span>
+              <span>{formatCurrencyBRL(Number(inv.total_amount))} • {inv.status}</span>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -71,7 +99,7 @@ export default async function CardDetailPage({ params }: { params: { id: string 
         </div>
       </section>
 
-      <section id="lancamentos" className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
+      <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
         <h3 className="mb-3 text-lg font-semibold">Parcelas ativas</h3>
         <div className="space-y-3">
           {groupedProgress.map(({ group, paidCount, nextInstallment, txs }) => (

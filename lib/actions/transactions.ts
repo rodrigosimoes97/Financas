@@ -2,7 +2,6 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { createCreditPurchase } from '@/lib/services/credit';
 
 type ActionResult = { ok: boolean; message?: string; error?: string };
 
@@ -16,21 +15,17 @@ export async function createTransaction(formData: FormData): Promise<ActionResul
 
   const paymentMethod = String(formData.get('payment_method'));
   if (paymentMethod === 'credit') {
-    try {
-      await createCreditPurchase({
-        user_id: user.id,
-        account_id: String(formData.get('account_id')),
-        category_id: String(formData.get('category_id')),
-        description: String(formData.get('description') || ''),
-        amount_total: Number(formData.get('amount')),
-        purchase_date: String(formData.get('date')),
-        credit_card_id: String(formData.get('credit_card_id')),
-        is_installment: String(formData.get('is_installment')) === 'true',
-        total_installments: Number(formData.get('total_installments') || 1)
-      });
-    } catch (error) {
-      return { ok: false, error: error instanceof Error ? error.message : 'Erro ao registrar compra no crédito.' };
-    }
+    const { error } = await supabase.rpc('create_credit_purchase', {
+      p_account_id: String(formData.get('account_id')),
+      p_category_id: String(formData.get('category_id')),
+      p_credit_card_id: String(formData.get('credit_card_id')),
+      p_purchase_date: String(formData.get('date')),
+      p_description: String(formData.get('description') || ''),
+      p_total_amount: Number(formData.get('amount')),
+      p_total_installments:
+        String(formData.get('is_installment')) === 'true' ? Number(formData.get('total_installments') || 1) : 1
+    });
+    if (error) return { ok: false, error: error.message };
   } else {
     const payload = {
       user_id: user.id,
@@ -49,6 +44,7 @@ export async function createTransaction(formData: FormData): Promise<ActionResul
 
   revalidatePath('/dashboard');
   revalidatePath('/transactions');
+  revalidatePath('/cards');
   return { ok: true, message: 'Cadastro realizado com sucesso.' };
 }
 
