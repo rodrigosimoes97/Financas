@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/app-shell/page-header';
 import { QuickAddTransaction } from '@/components/forms/quick-add-transaction';
 import { ptBR } from '@/lib/i18n/pt-BR';
 import { TransactionsManager } from '@/components/forms/transactions-manager';
+import { formatMonthBR } from '@/lib/utils';
 
 export default async function TransactionsPage() {
   const supabase = await createClient();
@@ -16,7 +17,7 @@ export default async function TransactionsPage() {
     supabase.from('categories').select('*').order('name'),
     supabase.from('accounts').select('*').order('name'),
     supabase.from('accounts').select('*').is('archived_at', null).order('name'),
-    supabase.from('credit_cards').select('*').eq('is_archived', false).order('name')
+    supabase.from('credit_cards').select('*').is('archived_at', null).order('name')
   ]);
 
   return (
@@ -26,7 +27,13 @@ export default async function TransactionsPage() {
         subtitle="Gerencie suas movimentações financeiras com clareza."
         actions={<QuickAddTransaction accounts={activeAccounts ?? []} categories={categories ?? []} creditCards={creditCards ?? []} />}
       />
-      <TransactionsManager rows={rows ?? []} categories={categories ?? []} accounts={activeAccounts ?? []} allAccounts={allAccounts ?? []} />
+      <TransactionsManager
+        rows={rows ?? []}
+        categories={categories ?? []}
+        accounts={activeAccounts ?? []}
+        allAccounts={allAccounts ?? []}
+        currentMonthLabel={formatMonthBR(new Date())}
+      />
     </section>
   );
 }

@@ -4,7 +4,7 @@ import { CardsManager } from '@/components/cards/cards-manager';
 
 export default async function CardsPage() {
   const supabase = await createClient();
-  const { data: cards } = await supabase.from('credit_cards').select('*').eq('is_archived', false).order('name');
+  const { data: cards } = await supabase.from('credit_cards').select('*').order('archived_at', { ascending: true }).order('name');
 
   return (
     <section className="space-y-5">

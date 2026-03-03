@@ -2,7 +2,7 @@
 
 import { deleteTransaction, updateTransaction } from '@/lib/actions/transactions';
 import { ptBR } from '@/lib/i18n/pt-BR';
-import { formatCurrencyBRL, formatDateBR, formatMonthBR, typeToLabel } from '@/lib/utils';
+import { formatCurrencyBRL, formatDateBR, typeToLabel } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -14,9 +14,10 @@ interface Props {
   categories: Category[];
   accounts: Account[];
   allAccounts: Account[];
+  currentMonthLabel: string;
 }
 
-export function TransactionsManager({ rows, categories, accounts, allAccounts }: Props) {
+export function TransactionsManager({ rows, categories, accounts, allAccounts, currentMonthLabel }: Props) {
   const toast = useToast();
 
   return (
@@ -24,7 +25,7 @@ export function TransactionsManager({ rows, categories, accounts, allAccounts }:
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
         <p className="mb-3 text-sm text-zinc-400">{ptBR.hints.filters}</p>
         <div className="grid gap-2 md:grid-cols-4">
-          <select className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-sm"><option>{formatMonthBR(new Date())}</option></select>
+          <select className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-sm"><option>{currentMonthLabel}</option></select>
           <select className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-sm"><option>{ptBR.labels.allCategories}</option>{categories.map((c) => <option key={c.id}>{c.name}</option>)}</select>
           <select className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-sm"><option>{ptBR.labels.allTypes}</option><option>{ptBR.typeLabel.income}</option><option>{ptBR.typeLabel.expense}</option></select>
           <button className="rounded-xl border border-zinc-700 px-3 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800">{ptBR.actions.clear}</button>

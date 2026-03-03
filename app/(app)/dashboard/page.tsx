@@ -39,7 +39,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
     supabase.from('categories').select('*').order('name'),
     supabase.from('accounts').select('*').is('archived_at', null).order('name'),
     supabase.from('goals').select('id,monthly_limit,month, category:categories(name)').eq('month', monthDate),
-    supabase.from('credit_cards').select('*').eq('is_archived', false).order('name')
+    supabase.from('credit_cards').select('*').is('archived_at', null).order('name')
   ]);
 
   const normalizedTransactions: Transaction[] = ((transactions ?? []) as DashboardTransactionRow[]).map((transaction) => ({
