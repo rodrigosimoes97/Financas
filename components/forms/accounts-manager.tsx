@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useFormState } from 'react-dom';
-import { createAccountState, deleteAccount } from '@/lib/actions/accounts';
+import { createAccountState, deleteAccount, reactivateAccount } from '@/lib/actions/accounts';
 import { Account } from '@/types/models';
 import { ptBR } from '@/lib/i18n/pt-BR';
 import { SubmitButton } from '@/components/ui/submit-button';
@@ -16,6 +16,8 @@ export function AccountsManager({ rows }: { rows: Account[] }) {
   const toast = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const [state, createAction] = useFormState(createAccountState, initialState);
+  const activeAccounts = rows.filter((account) => !account.archived_at);
+  const archivedAccounts = rows.filter((account) => Boolean(account.archived_at));
 
   useEffect(() => {
     if (state.ok) {
@@ -37,21 +39,52 @@ export function AccountsManager({ rows }: { rows: Account[] }) {
       {rows.length === 0 ? (
         <EmptyState title={ptBR.states.noAccounts} />
       ) : (
-        <div className="space-y-2">
-          {rows.map((account) => (
-            <div key={account.id} className="flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
-              <p>{account.name}</p>
-              <ConfirmDialog
-                triggerLabel={ptBR.actions.delete}
-                triggerClassName="rounded-xl bg-rose-500/80 px-3 py-2 text-sm font-medium text-white hover:bg-rose-500"
-                onConfirm={async () => {
-                  const result = await deleteAccount(account.id);
-                  if (result.ok) toast.success(result.message ?? 'Exclusão realizada com sucesso.');
-                  else toast.error(result.error ?? 'Ocorreu um erro ao excluir.');
-                }}
-              />
-            </div>
-          ))}
+        <div className="space-y-6">
+          <section className="space-y-2">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-400">Ativas</h3>
+            {activeAccounts.length === 0 ? (
+              <p className="text-sm text-zinc-500">Nenhuma conta ativa.</p>
+            ) : (
+              activeAccounts.map((account) => (
+                <div key={account.id} className="flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
+                  <p>{account.name}</p>
+                  <ConfirmDialog
+                    triggerLabel="Arquivar"
+                    triggerClassName="rounded-xl bg-rose-500/80 px-3 py-2 text-sm font-medium text-white hover:bg-rose-500"
+                    onConfirm={async () => {
+                      const result = await deleteAccount(account.id);
+                      if (result.ok) toast.success(result.message ?? 'Conta arquivada com sucesso.');
+                      else toast.error(result.error ?? 'Ocorreu um erro ao arquivar.');
+                    }}
+                  />
+                </div>
+              ))
+            )}
+          </section>
+
+          <section className="space-y-2">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-400">Arquivadas</h3>
+            {archivedAccounts.length === 0 ? (
+              <p className="text-sm text-zinc-500">Nenhuma conta arquivada.</p>
+            ) : (
+              archivedAccounts.map((account) => (
+                <div key={account.id} className="flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 text-zinc-300">
+                  <p>{account.name}</p>
+                  <button
+                    type="button"
+                    className="rounded-xl border border-zinc-700 px-3 py-2 text-sm font-medium hover:bg-zinc-800"
+                    onClick={async () => {
+                      const result = await reactivateAccount(account.id);
+                      if (result.ok) toast.success(result.message ?? 'Conta reativada com sucesso.');
+                      else toast.error(result.error ?? 'Ocorreu um erro ao reativar.');
+                    }}
+                  >
+                    Reativar
+                  </button>
+                </div>
+              ))
+            )}
+          </section>
         </div>
       )}
     </>

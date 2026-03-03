@@ -5,6 +5,7 @@ export interface Account {
   id: string;
   user_id: string;
   name: string;
+  archived_at?: string | null;
   created_at: string;
 }
 
@@ -27,6 +28,10 @@ export interface Transaction {
   description: string | null;
   date: string;
   created_at: string;
+  parent_transaction_id?: string | null;
+  is_installment?: boolean;
+  installments_total?: number | null;
+  installment_index?: number | null;
   category?: Pick<Category, 'name' | 'type'>;
   account?: Pick<Account, 'name'>;
 }
