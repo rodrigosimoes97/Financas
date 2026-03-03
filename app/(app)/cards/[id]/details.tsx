@@ -1,6 +1,6 @@
 'use client';
 
-import { formatCurrencyBRL, formatMonthBR } from '@/lib/utils';
+import { formatCurrencyBRL, formatDateBR, formatMonthBR } from '@/lib/utils';
 import { InvoiceActions } from '../../../../components/cards/invoice-actions';
 import { ptBR } from '@/lib/i18n/pt-BR';
 
@@ -61,7 +61,7 @@ export function InvoicesTable({ invoices }: { invoices: InvoiceRow[] }) {
                 >
                   <td className="px-3 py-2 font-medium">
                     <span className={isCurrent ? 'text-emerald-300' : ''}>
-                      {formatMonthBR(new Date(inv.reference_month))}
+                      {formatMonthBR(inv.reference_month)}
                     </span>
                     {isCurrent && (
                       <span className="ml-2 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-200">
@@ -71,11 +71,11 @@ export function InvoicesTable({ invoices }: { invoices: InvoiceRow[] }) {
                   </td>
 
                   <td className="px-3 py-2 text-zinc-300">
-                    {new Date(inv.closing_date).toLocaleDateString('pt-BR')}
+                    {formatDateBR(inv.closing_date)}
                   </td>
 
                   <td className="px-3 py-2 text-zinc-300">
-                    {new Date(inv.due_date).toLocaleDateString('pt-BR')}
+                    {formatDateBR(inv.due_date)}
                   </td>
 
                   <td className="px-3 py-2">

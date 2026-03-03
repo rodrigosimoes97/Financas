@@ -95,6 +95,7 @@ export async function createCreditPurchase(input: PurchaseInput) {
     .select('*')
     .eq('id', input.credit_card_id)
     .eq('user_id', input.user_id)
+    .is('archived_at', null)
     .single();
 
   if (cardError || !creditCard) throw new Error(cardError?.message ?? 'Cartão não encontrado.');
@@ -187,6 +188,7 @@ export async function simulateCreditPurchase(input: PurchaseInput) {
     .select('*')
     .eq('id', input.credit_card_id)
     .eq('user_id', input.user_id)
+    .is('archived_at', null)
     .single();
 
   if (!card) throw new Error('Cartão não encontrado.');

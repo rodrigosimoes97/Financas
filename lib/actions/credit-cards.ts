@@ -15,7 +15,9 @@ export async function createCreditCard(formData: FormData): Promise<ActionResult
     name: String(formData.get('name')),
     closing_day: Number(formData.get('closing_day')),
     due_day: Number(formData.get('due_day')),
-    limit_amount: formData.get('limit_amount') ? Number(formData.get('limit_amount')) : null
+    limit_amount: formData.get('limit_amount') ? Number(formData.get('limit_amount')) : null,
+    archived_at: null,
+    is_archived: false
   });
 
   if (error) return { ok: false, error: error.message };
@@ -25,11 +27,27 @@ export async function createCreditCard(formData: FormData): Promise<ActionResult
 
 export async function deleteCreditCard(id: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase.from('credit_cards').delete().eq('id', id);
+  const { error } = await supabase
+    .from('credit_cards')
+    .update({ archived_at: new Date().toISOString(), is_archived: true })
+    .eq('id', id);
   if (error) return { ok: false, error: error.message };
 
   revalidatePath('/cards');
-  return { ok: true, message: 'Cartão excluído com sucesso.' };
+  revalidatePath('/dashboard');
+  revalidatePath('/transactions');
+  return { ok: true, message: 'Cartão arquivado com sucesso.' };
+}
+
+export async function reactivateCreditCard(id: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.from('credit_cards').update({ archived_at: null, is_archived: false }).eq('id', id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/cards');
+  revalidatePath('/dashboard');
+  revalidatePath('/transactions');
+  return { ok: true, message: 'Cartão reativado com sucesso.' };
 }
 
 export async function createCreditCardState(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
