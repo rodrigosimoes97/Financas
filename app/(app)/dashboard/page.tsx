@@ -31,11 +31,13 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
     supabase
       .from('transactions')
       .select('id,user_id,account_id,category_id,amount,type,payment_method,description,date,created_at, category:categories(name,type), account:accounts(name)')
+      .is('parent_transaction_id', null)
+      .eq('is_installment', false)
       .gte('date', monthDate)
       .lt('date', nextMonthDate)
       .order('date', { ascending: false }),
     supabase.from('categories').select('*').order('name'),
-    supabase.from('accounts').select('*').order('name'),
+    supabase.from('accounts').select('*').is('archived_at', null).order('name'),
     supabase.from('goals').select('id,monthly_limit,month, category:categories(name)').eq('month', monthDate),
     supabase.from('credit_cards').select('*').eq('is_archived', false).order('name')
   ]);

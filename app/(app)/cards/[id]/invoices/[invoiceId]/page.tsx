@@ -19,6 +19,9 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
     .from('transactions')
     .select('id,date,amount,description,category_id,created_at,installment_group_id,installment_number,total_installments, category:categories(name)')
     .eq('invoice_id', params.invoiceId)
+    .eq('payment_method', 'credit')
+    .eq('type', 'expense')
+    .or('is_installment.eq.true,parent_transaction_id.is.null')
     .order('date', { ascending: false })
     .order('created_at', { ascending: false });
 

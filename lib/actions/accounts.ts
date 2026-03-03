@@ -24,13 +24,24 @@ export async function createAccount(formData: FormData): Promise<ActionResult> {
 
 export async function deleteAccount(id: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase.from('accounts').delete().eq('id', id);
+  const { error } = await supabase.from('accounts').update({ archived_at: new Date().toISOString() }).eq('id', id);
   if (error) return { ok: false, error: error.message };
 
   revalidatePath('/accounts');
   revalidatePath('/dashboard');
   revalidatePath('/transactions');
-  return { ok: true, message: 'Exclusão realizada com sucesso.' };
+  return { ok: true, message: 'Conta arquivada com sucesso.' };
+}
+
+export async function reactivateAccount(id: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.from('accounts').update({ archived_at: null }).eq('id', id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/accounts');
+  revalidatePath('/dashboard');
+  revalidatePath('/transactions');
+  return { ok: true, message: 'Conta reativada com sucesso.' };
 }
 
 export async function createAccountState(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
