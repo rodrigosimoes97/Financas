@@ -4,6 +4,14 @@ import { createClient } from '@/lib/supabase/server';
 import { formatCurrencyBRL, formatDateBR, formatMonthBR, getMonthStartISO } from '@/lib/utils';
 import { listInvoicesByCard } from '@/lib/actions/credit-cards';
 import { InvoiceActions } from '@/components/cards/invoice-actions';
+import { ptBR } from '@/lib/i18n/pt-BR';
+
+type InvoiceStatus = keyof typeof ptBR.invoice;
+
+export function getInvoiceStatusLabel(status: string) {
+  const key = status as InvoiceStatus;
+  return ptBR.invoice[key] ?? status;
+}
 
 export default async function CardDetailPage({ params }: { params: { id: string } }) {
   const supabase = await createClient();
@@ -37,7 +45,7 @@ export default async function CardDetailPage({ params }: { params: { id: string 
                         <span className="font-medium">{formatMonthBR(invoice.reference_month)}</span>
                         {isCurrent ? <span className="rounded-full bg-emerald-900/60 px-2 py-0.5 text-xs text-emerald-300">Atual</span> : null}
                       </div>
-                      <p className="mt-1 text-sm text-zinc-400">Total: {formatCurrencyBRL(Number(invoice.total_amount))} • Status: {invoice.status}</p>
+                      <p className="mt-1 text-sm text-zinc-400">Total: {formatCurrencyBRL(Number(invoice.total_amount))} • Status: {getInvoiceStatusLabel(invoice.status)}</p>
                       <p className="text-xs text-zinc-500">Fechamento: {formatDateBR(invoice.closing_date)} • Vencimento: {formatDateBR(invoice.due_date)}</p>
                     </Link>
                     {invoice.status !== 'paid' ? <InvoiceActions invoiceId={invoice.id} /> : null}

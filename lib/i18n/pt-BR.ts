@@ -90,5 +90,9 @@ export const ptBR = {
   dialog: {
     confirmDeleteTitle: 'Confirmar exclusão',
     confirmDeleteDescription: 'Tem certeza que deseja excluir? Esta ação não pode ser desfeita.'
+  },
+  invoice: {
+    open: 'Aberta',
+    paid: 'Paga'
   }
 } as const;

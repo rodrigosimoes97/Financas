@@ -39,7 +39,7 @@ export async function createTransaction(formData: FormData): Promise<ActionResul
     };
 
     const { error } = await supabase.from('transactions').insert(payload);
-    if (error) return { ok: false, error: error.message };
+      if (error) return { ok: false, error: error.message };
   }
 
   revalidatePath('/dashboard');

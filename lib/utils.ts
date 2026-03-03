@@ -10,8 +10,22 @@ export const formatCurrencyBRL = (value: number) =>
 export const formatDateBR = (date: string | Date) =>
   new Intl.DateTimeFormat('pt-BR').format(new Date(date));
 
-export const formatMonthBR = (date: string | Date) =>
-  new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date(date));
+export const formatMonthBR = (date: string | Date) => {
+  const d = new Date(date);
+
+  const month = new Intl.DateTimeFormat('pt-BR', {
+    month: 'long',
+  }).format(d);
+
+  const year = new Intl.DateTimeFormat('pt-BR', {
+    year: 'numeric',
+  }).format(d);
+
+  const capitalizedMonth =
+    month.charAt(0).toUpperCase() + month.slice(1);
+
+  return `${capitalizedMonth}/${year}`;
+};
 
 
 export const getMonthStartISO = (date: Date) =>
