@@ -17,11 +17,10 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
 
   const { data: rows } = await supabase
     .from('transactions')
-    .select('id,date,amount,description,category_id,created_at,installment_group_id,installment_number,total_installments, category:categories(name)')
+    .select('id,date,amount,description,category_id,created_at,installment_group_id,installment_number,installment_index,total_installments,installments_total,is_installment,parent_transaction_id, category:categories(name)')
     .eq('invoice_id', params.invoiceId)
     .eq('payment_method', 'credit')
     .eq('type', 'expense')
-    .or('is_installment.eq.true,parent_transaction_id.is.null')
     .order('date', { ascending: false })
     .order('created_at', { ascending: false });
 
@@ -40,24 +39,26 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
           <p className="text-sm text-zinc-500">Nenhum lançamento nesta fatura.</p>
         ) : (
           <div className="space-y-2">
-            {(rows ?? []).map((row) => (
-              <div key={row.id} className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">
-                      {row.description || 'Transação'}
-                      {row.installment_group_id && row.installment_number && row.total_installments ? (
-                        <span className="ml-2 rounded-md border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 text-xs text-zinc-300">
-                          {row.installment_number}/{row.total_installments}
-                        </span>
-                      ) : null}
-                    </p>
-                    <p className="text-xs text-zinc-500">{(row.category as { name?: string } | null)?.name ?? 'Categoria'} • {formatDateBR(row.date)}</p>
+            {(rows ?? []).map((row) => {
+              const totalInstallments = row.total_installments ?? row.installments_total;
+              const installmentNumber = row.installment_number ?? row.installment_index;
+              const cleanDescription = (row.description || 'Transação').replace(/\s*[•\-]?\s*\(\d+\/\d+\)\s*$/, '');
+              const title = installmentNumber && totalInstallments
+                ? `${cleanDescription} • ${installmentNumber}/${totalInstallments}`
+                : cleanDescription;
+
+              return (
+                <div key={row.id} className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{title}</p>
+                      <p className="text-xs text-zinc-500">{(row.category as { name?: string } | null)?.name ?? 'Categoria'} • {formatDateBR(row.date)}</p>
+                    </div>
+                    <span className="font-semibold">{formatCurrencyBRL(Number(row.amount))}</span>
                   </div>
-                  <span className="font-semibold">{formatCurrencyBRL(Number(row.amount))}</span>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
