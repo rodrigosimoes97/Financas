@@ -9,10 +9,16 @@ export default function LoadingDashboard() {
         <Skeleton className="h-28 w-full" />
         <Skeleton className="h-28 w-full" />
       </div>
-      <div className="grid gap-4 xl:grid-cols-[1.7fr_1fr]">
+      <Skeleton className="h-40 w-full" />
+      <div className="grid gap-4 xl:grid-cols-2">
         <Skeleton className="h-80 w-full" />
-        <Skeleton className="h-80 w-full" />
+        <div className="space-y-4">
+          <Skeleton className="h-52 w-full" />
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-40 w-full" />
+        </div>
       </div>
+      <Skeleton className="h-96 w-full" />
     </section>
   );
 }
