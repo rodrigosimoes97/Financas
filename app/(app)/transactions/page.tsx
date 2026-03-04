@@ -25,8 +25,6 @@ export default async function TransactionsPage({
       .select('id,user_id,created_at,amount,type,description,date,account_id,category_id,payment_method,total_installments,installments_total,account:accounts(name),category:categories(name,type)')
       .is('parent_transaction_id', null)
       .eq('is_installment', false)
-      .is('installment_number', null)
-      .is('installment_index', null)
       .order('date', { ascending: false })
       .order('id', { ascending: false })
       .range(from, to),

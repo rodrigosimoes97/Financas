@@ -74,11 +74,22 @@ export async function updateTransaction(id: string, formData: FormData): Promise
 
 export async function deleteTransaction(id: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase.from('transactions').delete().eq('id', id);
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+
+  if (!user) return { ok: false, error: 'Usuário não autenticado.' };
+
+  const { error } = await supabase.rpc('delete_transaction_cascade', {
+    p_transaction_id: id,
+    p_user_id: user.id
+  });
+
   if (error) return { ok: false, error: error.message };
 
   revalidatePath('/dashboard');
   revalidatePath('/transactions');
+  revalidatePath('/cards');
   return { ok: true, message: 'Exclusão realizada com sucesso.' };
 }
 
