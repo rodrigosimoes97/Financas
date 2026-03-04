@@ -13,11 +13,10 @@ interface Props {
   rows: Transaction[];
   categories: Category[];
   accounts: Account[];
-  allAccounts: Account[];
   currentMonthLabel: string;
 }
 
-export function TransactionsManager({ rows, categories, accounts, allAccounts, currentMonthLabel }: Props) {
+export function TransactionsManager({ rows, categories, accounts, currentMonthLabel }: Props) {
   const toast = useToast();
 
   return (
@@ -37,7 +36,8 @@ export function TransactionsManager({ rows, categories, accounts, allAccounts, c
       ) : (
         <div className="space-y-2">
           {rows.map((tx) => {
-            const accountName = (tx.account as { name?: string } | undefined)?.name ?? allAccounts.find((account) => account.id === tx.account_id)?.name ?? 'Conta';
+            const accountName = (tx.account as { name?: string } | undefined)?.name ?? 'Conta';
+            const installmentsCount = tx.total_installments ?? tx.installments_total ?? null;
 
             return (
               <form
@@ -67,7 +67,9 @@ export function TransactionsManager({ rows, categories, accounts, allAccounts, c
                 />
                 <div className="md:col-span-8 text-xs text-zinc-500">
                   {typeToLabel(tx.type)} • {formatCurrencyBRL(Number(tx.amount))} • {formatDateBR(tx.date)} • {accountName}
-                  {tx.installments_total && tx.installments_total > 1 ? ` • (x${tx.installments_total})` : ''}
+                  {installmentsCount && installmentsCount > 1 ? (
+                    <span className="ml-2 rounded-md border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 text-xs text-zinc-300">{installmentsCount}x</span>
+                  ) : null}
                 </div>
               </form>
             );
