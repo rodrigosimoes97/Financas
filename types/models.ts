@@ -30,6 +30,7 @@ export interface Transaction {
   created_at: string;
   parent_transaction_id?: string | null;
   is_installment?: boolean;
+  total_installments?: number | null;
   installments_total?: number | null;
   installment_index?: number | null;
   category?: Pick<Category, 'name' | 'type'>;
