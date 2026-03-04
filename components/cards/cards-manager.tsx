@@ -36,12 +36,9 @@ export function CardsManager({ cards }: { cards: CardItem[] }) {
     }
   }, [state, toast]);
 
-  const cardSubtitle = (card: CardItem) =>
-    `Fechamento: dia ${card.closing_day} • Vencimento: dia ${card.due_day} • Limite: ${card.limit_amount ? formatCurrencyBRL(Number(card.limit_amount)) : '—'}`;
-
   return (
     <div className="space-y-6">
-      <form ref={formRef} action={action} className="grid gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 md:grid-cols-5">
+      <form ref={formRef} action={action} className="grid gap-2 rounded-3xl border border-zinc-800 bg-zinc-900/60 p-4 md:grid-cols-5">
         <input name="name" required placeholder="Nome do cartão" className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5" />
         <input name="closing_day" type="number" min={1} max={28} required placeholder="Dia fechamento" className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5" />
         <input name="due_day" type="number" min={1} max={28} required placeholder="Dia vencimento" className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5" />
@@ -49,19 +46,20 @@ export function CardsManager({ cards }: { cards: CardItem[] }) {
         <SubmitButton className="rounded-xl bg-emerald-400 px-3 py-2.5 font-medium text-emerald-950 hover:bg-emerald-300">Adicionar cartão</SubmitButton>
       </form>
 
-      <section className="space-y-2">
+      <section className="space-y-3">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-400">Cartões ativos</h3>
         {activeCards.length === 0 ? (
-          <p className="text-sm text-zinc-500">Nenhum cartão ativo.</p>
+          <p className="rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/60 p-4 text-sm text-zinc-500">Nenhum cartão ativo.</p>
         ) : (
           activeCards.map((card) => (
-            <div key={card.id} className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">{card.name}</p>
-                  <p className="mt-1 text-sm text-zinc-400">{cardSubtitle(card)}</p>
-                  <Link href={`/cards/${card.id}`} className="mt-2 inline-block text-sm text-emerald-300 hover:underline">Ver faturas</Link>
-                </div>
+            <article key={card.id} className="rounded-3xl border border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-950 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <Link href={`/cards/${card.id}`} className="min-w-0 flex-1">
+                  <p className="text-lg font-semibold text-zinc-100">{card.name}</p>
+                  <p className="mt-2 text-sm text-zinc-400">Limite: {card.limit_amount ? formatCurrencyBRL(Number(card.limit_amount)) : '—'}</p>
+                  <p className="text-xs text-zinc-500">Fechamento dia {card.closing_day} • Vencimento dia {card.due_day}</p>
+                  <span className="mt-3 inline-flex text-sm font-medium text-emerald-300">Abrir faturas →</span>
+                </Link>
                 <ConfirmDialog
                   triggerLabel="Arquivar"
                   triggerClassName="rounded-xl bg-rose-500/80 px-3 py-2 text-sm font-medium text-white hover:bg-rose-500"
@@ -72,7 +70,7 @@ export function CardsManager({ cards }: { cards: CardItem[] }) {
                   }}
                 />
               </div>
-            </div>
+            </article>
           ))
         )}
       </section>
@@ -87,8 +85,6 @@ export function CardsManager({ cards }: { cards: CardItem[] }) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">{card.name}</p>
-                  <p className="mt-1 text-sm text-zinc-500">{cardSubtitle(card)}</p>
-                  <Link href={`/cards/${card.id}`} className="mt-2 inline-block text-sm text-zinc-300 hover:underline">Ver faturas</Link>
                 </div>
                 <button
                   type="button"

@@ -2,7 +2,6 @@
 
 import { formatCurrencyBRL, formatDateBR, formatMonthBR } from '@/lib/utils';
 import { InvoiceActions } from '../../../../components/cards/invoice-actions';
-import { ptBR } from '@/lib/i18n/pt-BR';
 
 type InvoiceRow = {
   id: string;

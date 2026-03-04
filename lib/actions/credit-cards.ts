@@ -65,12 +65,60 @@ export async function markInvoiceAsPaid(invoiceId: string): Promise<ActionResult
 export async function listInvoicesByCard(cardId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from('invoices')
-    .select('id,reference_month,closing_date,due_date,total_amount,status')
+    .from('invoices_with_totals')
+    .select('id,reference_month,closing_date,due_date,total_amount,status,transactions_count')
     .eq('credit_card_id', cardId)
-    .gt('total_amount', 0)
-    .order('reference_month', { ascending: true });
+    .gt('transactions_count', 0)
+    .order('reference_month', { ascending: false });
 
   if (error) throw new Error(error.message);
   return data ?? [];
+}
+
+export async function deleteInvoiceTransaction(transactionId: string, invoiceId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const { data: tx, error: txError } = await supabase
+    .from('transactions')
+    .select('id,invoice_id,is_installment,parent_transaction_id')
+    .eq('id', transactionId)
+    .eq('invoice_id', invoiceId)
+    .maybeSingle();
+
+  if (txError) return { ok: false, error: txError.message };
+  if (!tx) return { ok: false, error: 'Lançamento não encontrado nesta fatura.' };
+  if (!tx.is_installment || !tx.parent_transaction_id) {
+    return { ok: false, error: 'Apenas parcelas podem ser removidas nesta tela.' };
+  }
+
+  const { error } = await supabase.from('transactions').delete().eq('id', transactionId);
+  if (error) return { ok: false, error: error.message };
+
+  const { count: remaining, error: remainingError } = await supabase
+    .from('transactions')
+    .select('id', { count: 'exact', head: true })
+    .eq('invoice_id', invoiceId)
+    .eq('payment_method', 'credit')
+    .eq('type', 'expense');
+
+  if (remainingError) return { ok: false, error: remainingError.message };
+
+  if ((remaining ?? 0) === 0) {
+    await supabase.from('invoices').delete().eq('id', invoiceId);
+  } else {
+    const { data: totalRows, error: totalError } = await supabase
+      .from('transactions')
+      .select('amount')
+      .eq('invoice_id', invoiceId)
+      .eq('payment_method', 'credit')
+      .eq('type', 'expense');
+
+    if (totalError) return { ok: false, error: totalError.message };
+    const total = (totalRows ?? []).reduce((sum, row) => sum + Number(row.amount), 0);
+    const { error: updateError } = await supabase.from('invoices').update({ total_amount: total }).eq('id', invoiceId);
+    if (updateError) return { ok: false, error: updateError.message };
+  }
+
+  revalidatePath('/cards');
+  return { ok: true, message: 'Lançamento removido da fatura.' };
 }

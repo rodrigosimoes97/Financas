@@ -3,7 +3,7 @@
 import { markInvoiceAsPaid } from '@/lib/actions/credit-cards';
 import { useToast } from '@/components/ui/toast';
 
-export function InvoiceActions({ invoiceId }: { invoiceId: string }) {
+export function InvoiceActions({ invoiceId, label = 'Marcar como paga' }: { invoiceId: string; label?: string }) {
   const toast = useToast();
 
   return (
@@ -15,7 +15,7 @@ export function InvoiceActions({ invoiceId }: { invoiceId: string }) {
       }}
       className="rounded-xl bg-emerald-500 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-400"
     >
-      Marcar como paga
+      {label}
     </button>
   );
 }
