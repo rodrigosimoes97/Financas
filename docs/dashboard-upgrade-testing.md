@@ -48,3 +48,24 @@ SELECT public.get_dashboard_summary(
 ```
 
 Depois, em **Settings → API → Reload schema cache**.
+
+## Correção: acesso negado com Service Role
+Diagnóstico da assinatura em produção:
+
+```sql
+SELECT n.nspname, p.proname, pg_get_function_identity_arguments(p.oid) args
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE p.proname = 'get_dashboard_summary';
+```
+
+Após aplicar a migração `0014_allow_service_role_dashboard_summary.sql`, o comportamento esperado é:
+- JWT role `service_role`: execução permitida sem `auth.uid()`.
+- Demais roles: exige `auth.uid() = p_user_id`.
+
+Permissões esperadas:
+- `authenticated`: execute
+- `service_role`: execute
+- `anon`: sem execute
+
+Recarregue cache da API no Supabase: **Settings → API → Reload schema cache**.
