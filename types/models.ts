@@ -1,5 +1,6 @@
 export type EntryType = 'income' | 'expense';
 export type PaymentMethod = 'credit' | 'debit' | 'pix' | 'cash';
+export type GoalType = 'SAVE' | 'SPEND_LIMIT';
 
 export interface Account {
   id: string;
@@ -40,8 +41,13 @@ export interface Transaction {
 export interface Goal {
   id: string;
   user_id: string;
-  category_id: string;
+  category_id: string | null;
   monthly_limit: number;
+  target_amount: number;
+  current_amount: number;
+  name?: string | null;
+  type: GoalType;
+  deadline?: string | null;
   month: string;
   created_at: string;
   category?: Pick<Category, 'name'>;

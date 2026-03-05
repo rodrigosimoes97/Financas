@@ -63,7 +63,19 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <div className="space-y-4">
               <UpcomingPaymentsCard items={dashboardData.summary.upcoming_payments ?? []} />
               <FreeMoneyCard value={Number(dashboardData.summary.free_money_estimate ?? 0)} />
-              <MonthGoalCard goal={dashboardData.goal} expenses={Number(dashboardData.summary.expense_total ?? 0)} />
+              <MonthGoalCard
+                goal={dashboardData.goal}
+                expenses={
+                  dashboardData.goal?.type === 'SPEND_LIMIT'
+                    ? Number(
+                        dashboardData.goal?.category_id
+                          ? dashboardData.summary.expense_by_category?.[dashboardData.goal.category_id] ?? 0
+                          : dashboardData.summary.expense_total ?? 0
+                      )
+                    : Number(dashboardData.goal?.current_amount ?? 0)
+                }
+                hasMultipleGoals={dashboardData.goalCount > 1}
+              />
             </div>
           </div>
 
