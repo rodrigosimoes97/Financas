@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { signIn, type AuthState } from '@/lib/actions/auth'
+import { signInState, type AuthState } from '@/lib/actions/auth'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -20,7 +20,7 @@ function SubmitButton() {
 
 export function LoginForm() {
   const router = useRouter()
-  const [state, action] = useFormState<AuthState, FormData>(signIn, {})
+  const [state, action] = useFormState<AuthState, FormData>(signInState, {})
 
   useEffect(() => {
     if (state?.redirectTo) router.push(state.redirectTo)

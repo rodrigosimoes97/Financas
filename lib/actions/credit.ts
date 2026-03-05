@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { invalidateDashboardCache } from '@/lib/actions/dashboard';
 
 type ActionResult = { ok: boolean; message?: string; error?: string; data?: unknown };
 
@@ -21,6 +22,7 @@ export async function createCreditPurchaseAction(formData: FormData): Promise<Ac
 
   if (error) return { ok: false, error: error.message };
 
+  await invalidateDashboardCache();
   revalidatePath('/dashboard');
   revalidatePath('/transactions');
   revalidatePath('/cards');

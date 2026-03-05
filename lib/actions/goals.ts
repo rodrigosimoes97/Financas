@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { invalidateDashboardCache } from '@/lib/actions/dashboard';
 
 type ActionResult = { ok: boolean; message?: string; error?: string };
 
@@ -23,7 +24,7 @@ const parseNumericInput = (value: FormDataEntryValue | null, fallback = 0) => {
 
 const parseGoalPayload = (formData: FormData) => {
   const typeRaw = String(formData.get('type') ?? 'SPEND_LIMIT').toUpperCase();
-  const type: 'SAVE' | 'SPEND_LIMIT' = typeRaw === 'SAVE' ? 'SAVE' : 'SPEND_LIMIT';
+  const type: 'SAVE' | 'SPEND_LIMIT' | 'INVESTMENT' = typeRaw === 'SAVE' ? 'SAVE' : typeRaw === 'INVESTMENT' ? 'INVESTMENT' : 'SPEND_LIMIT';
   const monthlyLimit = Math.max(parseNumericInput(formData.get('monthly_limit')), 0);
   const targetInput = Math.max(parseNumericInput(formData.get('target_amount'), monthlyLimit), 0);
   const currentAmount = Math.max(parseNumericInput(formData.get('current_amount')), 0);
@@ -49,7 +50,7 @@ export async function createGoal(formData: FormData): Promise<ActionResult> {
   const payload = parseGoalPayload(formData);
 
   if (!payload.month) return { ok: false, error: 'Mês inválido.' };
-  if (payload.monthly_limit <= 0) return { ok: false, error: 'O limite mensal deve ser maior que zero.' };
+  if (payload.type === 'SPEND_LIMIT' && payload.monthly_limit <= 0) return { ok: false, error: 'O limite mensal deve ser maior que zero.' };
 
   if (process.env.NODE_ENV !== 'production') {
     console.debug('[goals.createGoal] payload', payload);
@@ -72,6 +73,7 @@ export async function createGoal(formData: FormData): Promise<ActionResult> {
   if (error) return { ok: false, error: error.message };
   revalidatePath('/');
   revalidatePath('/goals');
+  await invalidateDashboardCache();
   revalidatePath('/dashboard');
   return { ok: true, message: 'Cadastro realizado com sucesso.' };
 }
@@ -81,7 +83,7 @@ export async function updateGoal(id: string, formData: FormData): Promise<Action
   const payload = parseGoalPayload(formData);
 
   if (!payload.month) return { ok: false, error: 'Mês inválido.' };
-  if (payload.monthly_limit <= 0) return { ok: false, error: 'O limite mensal deve ser maior que zero.' };
+  if (payload.type === 'SPEND_LIMIT' && payload.monthly_limit <= 0) return { ok: false, error: 'O limite mensal deve ser maior que zero.' };
 
   if (process.env.NODE_ENV !== 'production') {
     console.debug('[goals.updateGoal] payload', { id, ...payload });
@@ -103,6 +105,7 @@ export async function updateGoal(id: string, formData: FormData): Promise<Action
   if (error) return { ok: false, error: error.message };
   revalidatePath('/');
   revalidatePath('/goals');
+  await invalidateDashboardCache();
   revalidatePath('/dashboard');
   return { ok: true, message: 'Atualização realizada com sucesso.' };
 }
@@ -114,6 +117,7 @@ export async function deleteGoal(id: string): Promise<ActionResult> {
 
   revalidatePath('/');
   revalidatePath('/goals');
+  await invalidateDashboardCache();
   revalidatePath('/dashboard');
   return { ok: true, message: 'Exclusão realizada com sucesso.' };
 }
