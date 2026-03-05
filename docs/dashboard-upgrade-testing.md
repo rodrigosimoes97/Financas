@@ -74,3 +74,28 @@ Recarregue cache da API no Supabase: **Settings → API → Reload schema cache*
 1. Com usuário logado, execute `debug_request_context` via client normal e confirme `auth_uid` preenchido.
 2. No server-side (admin client), execute `debug_request_context` e confirme `service_role` em pelo menos um campo (`auth_role` ou `current_user` ou `jwt_role_claim`).
 3. Abra `/dashboard` e valide: sem erro de `cookies inside unstable_cache`, sem `Acesso negado`, e summary carregando normalmente.
+
+## Correção `get_month_forecast` (0017)
+Após aplicar a migração `0017_create_get_month_forecast.sql`:
+
+1. Verifique assinatura existente:
+```sql
+SELECT n.nspname, p.proname, pg_get_function_identity_arguments(p.oid) args
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE p.proname = 'get_month_forecast'
+ORDER BY 1,2;
+```
+
+2. Recarregue o cache de schema da API em **Settings → API → Reload schema cache**.
+
+3. Teste execução direta:
+```sql
+SELECT *
+FROM public.get_month_forecast(
+  '<user_uuid>'::uuid,
+  '2026-03-01'::date,
+  '2026-04-01'::date,
+  '2026-03-05'::date
+);
+```
