@@ -69,3 +69,8 @@ Permissões esperadas:
 - `anon`: sem execute
 
 Recarregue cache da API no Supabase: **Settings → API → Reload schema cache**.
+
+## Checklist obrigatório (cookies/cache/auth)
+1. Com usuário logado, execute `debug_request_context` via client normal e confirme `auth_uid` preenchido.
+2. No server-side (admin client), execute `debug_request_context` e confirme `service_role` em pelo menos um campo (`auth_role` ou `current_user` ou `jwt_role_claim`).
+3. Abra `/dashboard` e valide: sem erro de `cookies inside unstable_cache`, sem `Acesso negado`, e summary carregando normalmente.

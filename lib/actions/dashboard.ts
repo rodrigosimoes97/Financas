@@ -2,6 +2,9 @@
 
 import { unstable_cache, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const MONTH_REGEX = /^\d{4}-\d{2}$/;
 
 const MONTH_REGEX = /^\d{4}-\d{2}$/;
 
@@ -68,8 +71,8 @@ const normalizeMonthInput = (month: string) => (MONTH_REGEX.test(month) ? `${mon
 
 const getDashboardSummaryCached = unstable_cache(
   async (userId: string, monthStart: string, nextMonthStart: string, today: string) => {
-    const supabase = await createClient();
-    const { data, error } = await supabase.rpc('get_dashboard_summary', {
+    const admin = createAdminClient();
+    const { data, error } = await admin.rpc('get_dashboard_summary', {
       p_user_id: userId,
       p_month_start: monthStart,
       p_next_month_start: nextMonthStart,
@@ -102,6 +105,15 @@ export async function getDashboardData(month: string) {
   const today = new Date().toISOString().slice(0, 10);
 
   await supabase.rpc('generate_pending_recurring_transactions', { p_user_id: user.id });
+
+  if (process.env.NODE_ENV !== 'production') {
+    const [userCtx, serviceCtx] = await Promise.all([
+      supabase.rpc('debug_request_context'),
+      createAdminClient().rpc('debug_request_context')
+    ]);
+    console.info('[dashboard.debug_request_context:user]', userCtx.data ?? userCtx.error?.message ?? null);
+    console.info('[dashboard.debug_request_context:service]', serviceCtx.data ?? serviceCtx.error?.message ?? null);
+  }
 
   try {
     const summary = await getDashboardSummaryCached(user.id, monthStart, nextMonthStart, today);
