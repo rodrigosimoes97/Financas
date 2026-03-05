@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { invalidateDashboardCache } from '@/lib/actions/dashboard';
 
 type ActionResult = { ok: boolean; message?: string; error?: string };
 
@@ -42,6 +43,7 @@ export async function createTransaction(formData: FormData): Promise<ActionResul
       if (error) return { ok: false, error: error.message };
   }
 
+  await invalidateDashboardCache();
   revalidatePath('/dashboard');
   revalidatePath('/transactions');
   revalidatePath('/cards');
@@ -67,6 +69,7 @@ export async function updateTransaction(id: string, formData: FormData): Promise
 
   if (error) return { ok: false, error: error.message };
 
+  await invalidateDashboardCache();
   revalidatePath('/dashboard');
   revalidatePath('/transactions');
   return { ok: true, message: 'Atualização realizada com sucesso.' };
@@ -87,6 +90,7 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
 
   if (error) return { ok: false, error: error.message };
 
+  await invalidateDashboardCache();
   revalidatePath('/dashboard');
   revalidatePath('/transactions');
   revalidatePath('/cards');
