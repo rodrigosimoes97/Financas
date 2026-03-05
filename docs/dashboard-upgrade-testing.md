@@ -21,3 +21,30 @@
 - RLS: usuário só vê seus próprios dados.
 - Forecast, insights e metas mudam ao alterar transações/aportes.
 - Mutations invalidam cache do dashboard.
+
+## Diagnóstico e correção do schema cache (RPC)
+Execute no SQL Editor do Supabase:
+
+```sql
+SELECT n.nspname, p.proname, pg_get_function_identity_arguments(p.oid) AS args
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE p.proname = 'get_dashboard_summary'
+ORDER BY 1, 2;
+```
+
+Resultado esperado após migração:
+- apenas `public.get_dashboard_summary(p_user_id uuid, p_month_start date, p_next_month_start date, p_today date)`
+
+Teste de execução:
+
+```sql
+SELECT public.get_dashboard_summary(
+  '<uuid-do-usuario-logado>'::uuid,
+  '2026-03-01'::date,
+  '2026-04-01'::date,
+  now()::date
+);
+```
+
+Depois, em **Settings → API → Reload schema cache**.
