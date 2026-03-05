@@ -6,6 +6,9 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 const MONTH_REGEX = /^\d{4}-\d{2}$/;
 
+const MONTH_REGEX = /^\d{4}-\d{2}$/;
+
+
 export interface DashboardInsight {
   id: string;
   severity: 'info' | 'warn' | 'critical';
