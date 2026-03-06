@@ -1,5 +1,6 @@
 import { CategoryPieChart } from '@/components/dashboard/category-pie-chart';
-import { formatCurrencyBRL } from '@/lib/utils';
+import { formatCurrencyBRL, paymentMethodToLabel } from '@/lib/utils';
+import { PaymentMethod} from '@/types/models'
 
 interface SpendingBreakdownProps {
   breakdown: {
@@ -33,7 +34,7 @@ export function SpendingBreakdownCard({ breakdown }: SpendingBreakdownProps) {
             <p className="mb-2 text-zinc-400">Mix de pagamento</p>
             {(breakdown.payment_mix ?? []).map((mix) => (
               <div key={mix.payment_type} className="flex items-center justify-between py-1">
-                <span className="uppercase">{mix.payment_type}</span>
+                <span className="uppercase">{paymentMethodToLabel(mix.payment_type as PaymentMethod)}</span>
                 <span>{formatCurrencyBRL(Number(mix.total))} ({Number(mix.percentage).toFixed(0)}%)</span>
               </div>
             ))}

@@ -68,8 +68,8 @@ export async function listInvoicesByCard(cardId: string) {
     .from('invoices_with_totals')
     .select('id,reference_month,closing_date,due_date,total_amount,status,transactions_count')
     .eq('credit_card_id', cardId)
-    .gt('transactions_count', 0)
-    .order('reference_month', { ascending: false });
+    .gt('total_amount_calc', 0)
+    .order('reference_month', { ascending: true });
 
   if (error) throw new Error(error.message);
   return data ?? [];
