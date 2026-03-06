@@ -85,8 +85,8 @@ export function GoalsManager({ rows, categories }: { rows: Goal[]; categories: C
             >
               <input name="type" type="hidden" value={goal.type ?? 'SPEND_LIMIT'} />
               <select aria-label="Categoria da meta" name="category_id" defaultValue={goal.category_id ?? ''} className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5">{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-              <input aria-label="Limite mensal" name="monthly_limit" type="number" min="0.01" step="0.01" defaultValue={Number(goal.monthly_limit)} className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5" />
-              <input aria-label={ptBR.labels.goalMonth} name="month" type="month" defaultValue={goal.month.slice(0, 7)} className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5" />
+              <input aria-label="Limite mensal" name="monthly_limit" type="number" min="0.01" step="0.01" defaultValue={Number(goal.monthly_limit ?? goal.target_amount)} className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5" />
+              <input aria-label={ptBR.labels.goalMonth} name="month" type="month" defaultValue={(goal.month ?? new Date().toISOString().slice(0, 10)).slice(0, 7)} className="rounded-xl border border-zinc-800 bg-zinc-950 p-2.5" />
               <SubmitButton pendingText="Atualizando meta..." className="rounded-xl bg-emerald-500 px-3 py-2.5 text-sm font-medium text-white hover:bg-emerald-400">{ptBR.actions.save}</SubmitButton>
               <ConfirmDialog
                 triggerLabel={ptBR.actions.delete}
@@ -100,7 +100,7 @@ export function GoalsManager({ rows, categories }: { rows: Goal[]; categories: C
                 }}
               />
               <div className="md:col-span-5 text-xs text-zinc-500">
-                {goal.category?.name ?? ptBR.labels.category} • {formatCurrencyBRL(Number(goal.monthly_limit))} • {formatMonthBR(goal.month)}
+                {goal.category?.name ?? ptBR.labels.category} • {formatCurrencyBRL(Number(goal.monthly_limit ?? goal.target_amount))} • {goal.month ? formatMonthBR(goal.month) : 'Sem mês'}
               </div>
             </form>
           ))}

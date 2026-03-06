@@ -1,6 +1,6 @@
 export type EntryType = 'income' | 'expense';
 export type PaymentMethod = 'credit' | 'debit' | 'pix' | 'cash';
-export type GoalType = 'SAVE' | 'SPEND_LIMIT' | 'INVESTMENT';
+export type GoalType = 'SAVINGS_GOAL' | 'SPEND_LIMIT';
 
 export interface Account {
   id: string;
@@ -48,18 +48,31 @@ export interface Transaction {
 export interface Goal {
   id: string;
   user_id: string;
+  type: GoalType;
+  name: string | null;
   category_id: string | null;
-  monthly_limit: number;
   target_amount: number;
   current_amount: number;
-  name?: string | null;
-  type: GoalType;
+  monthly_limit?: number | null;
+  month: string | null;
   deadline?: string | null;
-  month: string;
+  status: 'ACTIVE' | 'COMPLETED' | 'ARCHIVED';
+  notes?: string | null;
   created_at: string;
+  updated_at?: string;
   category?: Pick<Category, 'name'>;
 }
 
+export interface GoalContribution {
+  id: string;
+  goal_id: string;
+  user_id: string;
+  amount: number;
+  contribution_date: string;
+  source_account_id?: string | null;
+  notes?: string | null;
+  created_at: string;
+}
 
 export interface InvestmentGoal {
   id: string;
@@ -67,6 +80,7 @@ export interface InvestmentGoal {
   name: string;
   target_amount: number;
   current_amount: number;
+  monthly_limit?: number | null;
   start_date: string;
   target_date?: string | null;
   monthly_contribution_target?: number | null;
