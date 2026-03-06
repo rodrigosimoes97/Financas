@@ -32,7 +32,7 @@ export interface DashboardSummaryPayload {
     total_expenses: number;
     total_income: number;
     net: number;
-    categories: Array<{ category_id: string; category_name: string; total: number; percentage: number }>;
+    categories: Array<{ category_id: string | null; category_name: string; total: number; percentage: number }>;
     essentials_total: number;
     non_essentials_total: number;
     payment_mix: Array<{ payment_type: string; total: number; percentage: number }>;
@@ -65,6 +65,47 @@ export interface DashboardSummaryPayload {
 }
 
 const normalizeMonthInput = (month: string) => (MONTH_REGEX.test(month) ? `${month}-01` : null);
+
+const sumTotals = (values: Array<number>) => values.reduce((acc, value) => acc + (Number.isFinite(value) ? value : 0), 0);
+
+const validateDashboardConsistency = (summary: DashboardSummaryPayload) => {
+  const tolerance = 0.5;
+  const breakdown = summary.spending_breakdown;
+
+  const accountsTotal = Number(breakdown?.accounts_total ?? 0);
+  const creditCardsTotal = Number(breakdown?.credit_cards_total ?? 0);
+  const totalExpenses = Number(breakdown?.total_expenses ?? 0);
+
+  const expectedTotal = accountsTotal + creditCardsTotal;
+  if (Math.abs(expectedTotal - totalExpenses) > tolerance) {
+    console.warn('[dashboard.consistency] accounts_total + credit_cards_total diverge de total_expenses', {
+      accountsTotal,
+      creditCardsTotal,
+      totalExpenses,
+      expectedTotal,
+      possibleCause: 'Dados legados sem invoice_id/reference_month ou transações antigas sem normalização.'
+    });
+  }
+
+  const categoriesSum = sumTotals((breakdown?.categories ?? []).map((item) => Number(item?.total ?? 0)));
+  if (Math.abs(categoriesSum - totalExpenses) > tolerance) {
+    console.warn('[dashboard.consistency] soma de categorias diverge de total_expenses', {
+      categoriesSum,
+      totalExpenses,
+      possibleCause: 'Categorias ausentes/NULL ou dados antigos com categoria removida.'
+    });
+  }
+
+  const paymentMixSum = sumTotals((breakdown?.payment_mix ?? []).map((item) => Number(item?.total ?? 0)));
+  if (Math.abs(paymentMixSum - totalExpenses) > tolerance) {
+    console.warn('[dashboard.consistency] soma do payment_mix diverge de total_expenses', {
+      paymentMixSum,
+      totalExpenses,
+      possibleCause: 'payment_method inconsistente em dados legados.'
+    });
+  }
+};
+
 
 const getDashboardSummaryCached = unstable_cache(
   async (userId: string, monthStart: string, nextMonthStart: string, today: string) => {
@@ -114,6 +155,12 @@ export async function getDashboardData(month: string) {
 
   try {
     const summary = await getDashboardSummaryCached(user.id, monthStart, nextMonthStart, today);
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.info('[dashboard.summary.raw]', summary);
+      validateDashboardConsistency(summary);
+    }
+
     return { ok: true as const, summary };
   } catch (error) {
     return { ok: false as const, error: error instanceof Error ? error.message : 'Erro ao carregar dashboard.' };

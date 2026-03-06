@@ -36,7 +36,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         <>
           <SummaryCards
             income={Number(dashboardData.summary.spending_breakdown.total_income ?? 0)}
-            expense={Number(dashboardData.summary.spending_breakdown.total_expenses ?? 0)}
+            accountsTotal={Number(dashboardData.summary.spending_breakdown.accounts_total ?? 0)}
+            creditCardsTotal={Number(dashboardData.summary.spending_breakdown.credit_cards_total ?? 0)}
+            totalExpenses={Number(dashboardData.summary.spending_breakdown.total_expenses ?? 0)}
             balance={Number(dashboardData.summary.spending_breakdown.net ?? 0)}
           />
 
