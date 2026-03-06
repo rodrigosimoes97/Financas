@@ -16,6 +16,7 @@ export function SavingsGoalCard({ goal, contributions, onEdit }: { goal: Goal; c
   const router = useRouter();
   const toast = useToast();
   const [openContributions, setOpenContributions] = useState(false);
+  const [openContributionForm, setOpenContributionForm] = useState(false);
 
   const pct = goal.target_amount > 0 ? (goal.current_amount / goal.target_amount) * 100 : 0;
   const remaining = Math.max(goal.target_amount - goal.current_amount, 0);
@@ -64,17 +65,21 @@ export function SavingsGoalCard({ goal, contributions, onEdit }: { goal: Goal; c
         >
           Excluir
         </button>
+        <button
+          type="button"
+          className="rounded-lg border border-emerald-700/80 px-2 py-1 text-emerald-300 hover:bg-emerald-950/40"
+          onClick={() => setOpenContributionForm((prev) => !prev)}
+        >
+          {openContributionForm ? 'Ocultar aporte' : 'Adicionar aporte'}
+        </button>
         <button type="button" className="rounded-lg border border-zinc-700 px-2 py-1 hover:bg-zinc-800" onClick={() => setOpenContributions((prev) => !prev)}>
-          {openContributions ? 'Ocultar aportes' : 'Ver aportes'}
+          {openContributions ? 'Ocultar histórico' : 'Ver histórico'}
         </button>
       </div>
 
-      {openContributions ? (
-        <>
-          <GoalContributionForm goalId={goal.id} />
-          <GoalContributionList goalId={goal.id} contributions={contributions} />
-        </>
-      ) : null}
+      {openContributionForm ? <GoalContributionForm goalId={goal.id} /> : null}
+
+      {openContributions ? <GoalContributionList goalId={goal.id} contributions={contributions} /> : null}
     </GoalCard>
   );
 }

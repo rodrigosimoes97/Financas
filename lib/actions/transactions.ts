@@ -6,6 +6,12 @@ import { invalidateDashboardCache } from '@/lib/actions/dashboard';
 
 type ActionResult = { ok: boolean; message?: string; error?: string };
 
+
+async function recalculateSpendLimitsForUser(userId: string) {
+  const supabase = await createClient();
+  await supabase.rpc('recalculate_spend_limits_for_month', { p_user_id: userId, p_month: null });
+}
+
 export async function createTransaction(formData: FormData): Promise<ActionResult> {
   const supabase = await createClient();
   const {
@@ -43,6 +49,7 @@ export async function createTransaction(formData: FormData): Promise<ActionResul
       if (error) return { ok: false, error: error.message };
   }
 
+  await recalculateSpendLimitsForUser(user.id);
   await invalidateDashboardCache();
   revalidatePath('/dashboard');
   revalidatePath('/transactions');
@@ -52,6 +59,12 @@ export async function createTransaction(formData: FormData): Promise<ActionResul
 
 export async function updateTransaction(id: string, formData: FormData): Promise<ActionResult> {
   const supabase = await createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+
+  if (!user) return { ok: false, error: 'Usuário não autenticado.' };
+
   const payload = {
     account_id: String(formData.get('account_id')),
     category_id: String(formData.get('category_id')),
@@ -76,6 +89,7 @@ export async function updateTransaction(id: string, formData: FormData): Promise
 
   if (error) return { ok: false, error: error.message };
 
+  await recalculateSpendLimitsForUser(user.id);
   await invalidateDashboardCache();
   revalidatePath('/dashboard');
   revalidatePath('/transactions');
@@ -97,6 +111,7 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
 
   if (error) return { ok: false, error: error.message };
 
+  await recalculateSpendLimitsForUser(user.id);
   await invalidateDashboardCache();
   revalidatePath('/dashboard');
   revalidatePath('/transactions');

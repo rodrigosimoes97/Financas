@@ -16,7 +16,7 @@ export default async function GoalsPage({ searchParams }: GoalsPageProps) {
 
   const [{ data: goals }, { data: categories }, { data: contributions }] = await Promise.all([
     supabase.from('goals').select('*, category:categories(name)').order('created_at', { ascending: false }),
-    supabase.from('categories').select('*').eq('type', 'expense').order('name'),
+    supabase.from('categories').select('*').order('name'),
     supabase.from('goal_contributions').select('*').order('contribution_date', { ascending: false })
   ]);
 

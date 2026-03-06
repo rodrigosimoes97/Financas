@@ -72,7 +72,8 @@ export async function createGoal(formData: FormData): Promise<ActionResult> {
     deadline,
     notes,
     status: 'ACTIVE',
-    monthly_limit: type === 'SPEND_LIMIT' ? targetAmount : null
+    // Mantemos compatibilidade com bases legadas onde monthly_limit ainda é NOT NULL.
+    monthly_limit: targetAmount
   };
 
   const { error } = await supabase.from('goals').insert(payload);
@@ -108,7 +109,8 @@ export async function updateGoal(goalId: string, formData: FormData): Promise<Ac
       month: type === 'SPEND_LIMIT' ? month : null,
       deadline,
       notes,
-      monthly_limit: type === 'SPEND_LIMIT' ? targetAmount : null
+      // Mantemos compatibilidade com bases legadas onde monthly_limit ainda é NOT NULL.
+      monthly_limit: targetAmount
     })
     .eq('id', goalId)
     .eq('user_id', user.id);
