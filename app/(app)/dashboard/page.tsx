@@ -6,6 +6,7 @@ import { SpendingBreakdownCard } from '@/components/dashboard/spending-breakdown
 import { InsightsList } from '@/components/dashboard/insights-list';
 import { InvestmentGoalsCard } from '@/components/dashboard/investment-goals-card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { GoalsOverviewCard } from '@/components/dashboard/goals-overview-card';
 import { getDashboardData } from '@/lib/actions/dashboard';
 
 interface DashboardPageProps {
@@ -48,7 +49,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </div>
 
           <SpendingBreakdownCard breakdown={dashboardData.summary.spending_breakdown} />
-          <InvestmentGoalsCard goals={dashboardData.summary.investment_goals ?? []} />
+          <div className="grid gap-4 xl:grid-cols-2">
+            <GoalsOverviewCard
+              activeSavings={dashboardData.summary.goals_snapshot?.active_savings_goals ?? 0}
+              exceededLimits={dashboardData.summary.goals_snapshot?.exceeded_spend_limits ?? 0}
+              topGoals={dashboardData.summary.goals_snapshot?.top_savings_goals ?? []}
+            />
+            <InvestmentGoalsCard goals={dashboardData.summary.investment_goals ?? []} />
+          </div>
         </>
       )}
     </section>

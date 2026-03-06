@@ -11,7 +11,7 @@ import { useToast } from '@/components/ui/toast';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { Account, Category, Transaction, PaymentMethod } from '@/types/models';
+import { Account, Category, Transaction } from '@/types/models';
 
 interface CreditCardOption {
   id: string;

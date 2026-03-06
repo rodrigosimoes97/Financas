@@ -7,120 +7,198 @@ import { invalidateDashboardCache } from '@/lib/actions/dashboard';
 type ActionResult = { ok: boolean; message?: string; error?: string };
 
 const MONTH_REGEX = /^\d{4}-\d{2}$/;
-const MONTH_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 const normalizeMonth = (value: FormDataEntryValue | null) => {
-  const monthRaw = String(value ?? '').trim();
-  if (!monthRaw) return null;
-  if (MONTH_REGEX.test(monthRaw)) return `${monthRaw}-01`;
-  if (MONTH_DATE_REGEX.test(monthRaw)) return monthRaw;
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+  if (MONTH_REGEX.test(raw)) return `${raw}-01`;
+  if (DATE_REGEX.test(raw)) return raw;
   return null;
 };
 
-const parseNumericInput = (value: FormDataEntryValue | null, fallback = 0) => {
-  const parsed = Number(String(value ?? '').replace(',', '.').trim());
-  return Number.isFinite(parsed) ? parsed : fallback;
+const normalizeDate = (value: FormDataEntryValue | null) => {
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+  return DATE_REGEX.test(raw) ? raw : null;
 };
 
-const parseGoalPayload = (formData: FormData) => {
-  const typeRaw = String(formData.get('type') ?? 'SPEND_LIMIT').toUpperCase();
-  const type: 'SAVE' | 'SPEND_LIMIT' | 'INVESTMENT' = typeRaw === 'SAVE' ? 'SAVE' : typeRaw === 'INVESTMENT' ? 'INVESTMENT' : 'SPEND_LIMIT';
-  const monthlyLimit = Math.max(parseNumericInput(formData.get('monthly_limit')), 0);
-  const targetInput = Math.max(parseNumericInput(formData.get('target_amount'), monthlyLimit), 0);
-  const currentAmount = Math.max(parseNumericInput(formData.get('current_amount')), 0);
-  const month = normalizeMonth(formData.get('month'));
-  const categoryIdRaw = String(formData.get('category_id') ?? '').trim();
+const parseAmount = (value: FormDataEntryValue | null) => {
+  const parsed = Number(String(value ?? '').replace(',', '.').trim());
+  return Number.isFinite(parsed) ? parsed : 0;
+};
 
-  return {
-    category_id: categoryIdRaw || null,
-    monthly_limit: monthlyLimit,
-    target_amount: type === 'SPEND_LIMIT' ? monthlyLimit : targetInput,
-    current_amount: type === 'SPEND_LIMIT' ? 0 : currentAmount,
-    month,
-    type,
-    name: String(formData.get('name') ?? '').trim() || null
-  };
+async function currentUser() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  return { supabase, user: data.user };
+}
+
+const refreshPaths = async () => {
+  revalidatePath('/');
+  revalidatePath('/goals');
+  revalidatePath('/dashboard');
+  await invalidateDashboardCache();
 };
 
 export async function createGoal(formData: FormData): Promise<ActionResult> {
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, error: 'Usuário não autenticado.' };
+  const { supabase, user } = await currentUser();
+  if (!user) return { ok: false, error: 'Usuário não autenticado.' };
 
-  const payload = parseGoalPayload(formData);
+  const type = String(formData.get('type') ?? '').toUpperCase();
+  const targetAmount = parseAmount(formData.get('target_amount'));
+  const deadline = normalizeDate(formData.get('deadline'));
+  const month = normalizeMonth(formData.get('month'));
+  const name = String(formData.get('name') ?? '').trim() || null;
+  const categoryId = String(formData.get('category_id') ?? '').trim() || null;
+  const notes = String(formData.get('notes') ?? '').trim() || null;
 
-  if (!payload.month) return { ok: false, error: 'Mês inválido.' };
-  if (payload.type === 'SPEND_LIMIT' && payload.monthly_limit <= 0) return { ok: false, error: 'O limite mensal deve ser maior que zero.' };
+  if (!['SAVINGS_GOAL', 'SPEND_LIMIT'].includes(type)) return { ok: false, error: 'Tipo de meta inválido.' };
+  if (targetAmount <= 0) return { ok: false, error: 'Defina um valor maior que zero.' };
 
-  if (process.env.NODE_ENV !== 'production') {
-    console.debug('[goals.createGoal] payload', payload);
+  if (type === 'SAVINGS_GOAL' && !name) return { ok: false, error: 'Informe o nome da meta.' };
+  if (type === 'SPEND_LIMIT' && (!categoryId || !month)) {
+    return { ok: false, error: 'Categoria e mês são obrigatórios para limite por categoria.' };
   }
 
-  const { error } = await supabase.from('goals').upsert(
-    {
-      user_id: auth.user.id,
-      category_id: payload.category_id,
-      monthly_limit: payload.monthly_limit,
-      target_amount: payload.target_amount,
-      current_amount: payload.current_amount,
-      month: payload.month,
-      type: payload.type,
-      name: payload.name
-    },
-    { onConflict: 'user_id,month,type,category_id' }
-  );
+  const payload = {
+    user_id: user.id,
+    type,
+    name,
+    category_id: type === 'SPEND_LIMIT' ? categoryId : null,
+    target_amount: targetAmount,
+    current_amount: 0,
+    month: type === 'SPEND_LIMIT' ? month : null,
+    deadline,
+    notes,
+    status: 'ACTIVE',
+    monthly_limit: type === 'SPEND_LIMIT' ? targetAmount : null
+  };
 
+  const { error } = await supabase.from('goals').insert(payload);
   if (error) return { ok: false, error: error.message };
-  revalidatePath('/');
-  revalidatePath('/goals');
-  await invalidateDashboardCache();
-  revalidatePath('/dashboard');
-  return { ok: true, message: 'Cadastro realizado com sucesso.' };
+
+  if (type === 'SPEND_LIMIT' && month) {
+    await supabase.rpc('recalculate_spend_limits_for_month', { p_user_id: user.id, p_month: month });
+  }
+
+  await refreshPaths();
+  return { ok: true, message: 'Meta criada com sucesso.' };
 }
 
-export async function updateGoal(id: string, formData: FormData): Promise<ActionResult> {
-  const supabase = await createClient();
-  const payload = parseGoalPayload(formData);
+export async function updateGoal(goalId: string, formData: FormData): Promise<ActionResult> {
+  const { supabase, user } = await currentUser();
+  if (!user) return { ok: false, error: 'Usuário não autenticado.' };
 
-  if (!payload.month) return { ok: false, error: 'Mês inválido.' };
-  if (payload.type === 'SPEND_LIMIT' && payload.monthly_limit <= 0) return { ok: false, error: 'O limite mensal deve ser maior que zero.' };
-
-  if (process.env.NODE_ENV !== 'production') {
-    console.debug('[goals.updateGoal] payload', { id, ...payload });
-  }
+  const type = String(formData.get('type') ?? '').toUpperCase();
+  const targetAmount = parseAmount(formData.get('target_amount'));
+  const deadline = normalizeDate(formData.get('deadline'));
+  const month = normalizeMonth(formData.get('month'));
+  const name = String(formData.get('name') ?? '').trim() || null;
+  const categoryId = String(formData.get('category_id') ?? '').trim() || null;
+  const notes = String(formData.get('notes') ?? '').trim() || null;
 
   const { error } = await supabase
     .from('goals')
     .update({
-      category_id: payload.category_id,
-      monthly_limit: payload.monthly_limit,
-      target_amount: payload.target_amount,
-      current_amount: payload.current_amount,
-      month: payload.month,
-      type: payload.type,
-      name: payload.name
+      type,
+      name,
+      category_id: type === 'SPEND_LIMIT' ? categoryId : null,
+      target_amount: targetAmount,
+      month: type === 'SPEND_LIMIT' ? month : null,
+      deadline,
+      notes,
+      monthly_limit: type === 'SPEND_LIMIT' ? targetAmount : null
     })
-    .eq('id', id);
+    .eq('id', goalId)
+    .eq('user_id', user.id);
 
   if (error) return { ok: false, error: error.message };
-  revalidatePath('/');
-  revalidatePath('/goals');
-  await invalidateDashboardCache();
-  revalidatePath('/dashboard');
-  return { ok: true, message: 'Atualização realizada com sucesso.' };
+
+  if (type === 'SPEND_LIMIT' && month) {
+    await supabase.rpc('recalculate_spend_limits_for_month', { p_user_id: user.id, p_month: month });
+  }
+
+  await refreshPaths();
+  return { ok: true, message: 'Meta atualizada com sucesso.' };
 }
 
-export async function deleteGoal(id: string): Promise<ActionResult> {
-  const supabase = await createClient();
-  const { error } = await supabase.from('goals').delete().eq('id', id);
+export async function archiveGoal(goalId: string): Promise<ActionResult> {
+  const { supabase, user } = await currentUser();
+  if (!user) return { ok: false, error: 'Usuário não autenticado.' };
+
+  const { error } = await supabase.from('goals').update({ status: 'ARCHIVED' }).eq('id', goalId).eq('user_id', user.id);
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath('/');
-  revalidatePath('/goals');
-  await invalidateDashboardCache();
-  revalidatePath('/dashboard');
-  return { ok: true, message: 'Exclusão realizada com sucesso.' };
+  await refreshPaths();
+  return { ok: true, message: 'Meta arquivada com sucesso.' };
 }
+
+export async function deleteGoal(goalId: string): Promise<ActionResult> {
+  const { supabase, user } = await currentUser();
+  if (!user) return { ok: false, error: 'Usuário não autenticado.' };
+
+  const { error } = await supabase.from('goals').delete().eq('id', goalId).eq('user_id', user.id);
+  if (error) return { ok: false, error: error.message };
+
+  await refreshPaths();
+  return { ok: true, message: 'Meta excluída com sucesso.' };
+}
+
+export async function addGoalContribution(formData: FormData): Promise<ActionResult> {
+  const { supabase, user } = await currentUser();
+  if (!user) return { ok: false, error: 'Usuário não autenticado.' };
+
+  const goalId = String(formData.get('goal_id') ?? '').trim();
+  const amount = parseAmount(formData.get('amount'));
+  const contributionDate = normalizeDate(formData.get('contribution_date')) ?? new Date().toISOString().slice(0, 10);
+  const sourceAccountId = String(formData.get('source_account_id') ?? '').trim() || null;
+  const notes = String(formData.get('notes') ?? '').trim() || null;
+
+  if (!goalId || amount <= 0) return { ok: false, error: 'Dados do aporte inválidos.' };
+
+  const { error } = await supabase.from('goal_contributions').insert({
+    goal_id: goalId,
+    user_id: user.id,
+    amount,
+    contribution_date: contributionDate,
+    source_account_id: sourceAccountId,
+    notes
+  });
+
+  if (error) return { ok: false, error: error.message };
+
+  await supabase.rpc('recalculate_savings_goal_current_amount', { p_goal_id: goalId });
+  await refreshPaths();
+  return { ok: true, message: 'Aporte adicionado.' };
+}
+
+export async function removeGoalContribution(contributionId: string, goalId: string): Promise<ActionResult> {
+  const { supabase, user } = await currentUser();
+  if (!user) return { ok: false, error: 'Usuário não autenticado.' };
+
+  const { error } = await supabase.from('goal_contributions').delete().eq('id', contributionId).eq('user_id', user.id);
+  if (error) return { ok: false, error: error.message };
+
+  await supabase.rpc('recalculate_savings_goal_current_amount', { p_goal_id: goalId });
+  await refreshPaths();
+  return { ok: true, message: 'Aporte removido.' };
+}
+
+export async function recalculateSpendLimits(month: string): Promise<ActionResult> {
+  const { supabase, user } = await currentUser();
+  if (!user) return { ok: false, error: 'Usuário não autenticado.' };
+
+  const normalizedMonth = normalizeMonth(month);
+  if (!normalizedMonth) return { ok: false, error: 'Mês inválido.' };
+
+  const { error } = await supabase.rpc('recalculate_spend_limits_for_month', { p_user_id: user.id, p_month: normalizedMonth });
+  if (error) return { ok: false, error: error.message };
+
+  await refreshPaths();
+  return { ok: true, message: 'Limites recalculados.' };
+}
+
 
 export async function createGoalState(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   return createGoal(formData);

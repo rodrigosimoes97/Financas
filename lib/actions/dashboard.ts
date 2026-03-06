@@ -62,6 +62,13 @@ export interface DashboardSummaryPayload {
   }>;
   expenses_by_category: Array<{ category_id: string; name: string; total: number }>;
   invoices_summary: Array<{ card_id: string; card_name: string; current_invoice_total: number; next_invoice_total: number }>;
+
+  goals_snapshot: {
+    active_savings_goals: number;
+    exceeded_spend_limits: number;
+    top_savings_goals: Array<{ id: string; name: string; progress: number }>;
+    exceeded_categories: Array<{ goal_id: string; category_name: string; exceeded_by: number }>;
+  };
 }
 
 const normalizeMonthInput = (month: string) => (MONTH_REGEX.test(month) ? `${month}-01` : null);
@@ -155,6 +162,42 @@ export async function getDashboardData(month: string) {
 
   try {
     const summary = await getDashboardSummaryCached(user.id, monthStart, nextMonthStart, today);
+
+    const { data: goalsRows } = await supabase
+      .from('goals')
+      .select('id, type, name, current_amount, target_amount, category:categories(name)')
+      .in('type', ['SAVINGS_GOAL', 'SPEND_LIMIT'])
+      .eq('status', 'ACTIVE')
+      .or(`month.eq.${monthStart},month.is.null`);
+
+    const goals = (goalsRows ?? []) as Array<{ id: string; type: 'SAVINGS_GOAL' | 'SPEND_LIMIT'; name?: string | null; current_amount: number; target_amount: number; category?: { name?: string } | Array<{ name?: string }> | null }>;
+    const savings = goals.filter((goal) => goal.type === 'SAVINGS_GOAL');
+    const spendLimits = goals.filter((goal) => goal.type === 'SPEND_LIMIT');
+
+    const exceededCategories = spendLimits
+      .filter((goal) => Number(goal.current_amount) > Number(goal.target_amount))
+      .map((goal) => ({
+        goal_id: goal.id,
+        category_name: Array.isArray(goal.category) ? goal.category[0]?.name ?? 'Categoria' : goal.category?.name ?? 'Categoria',
+        exceeded_by: Number(goal.current_amount) - Number(goal.target_amount)
+      }))
+      .sort((a, b) => b.exceeded_by - a.exceeded_by);
+
+    const topSavingsGoals = savings
+      .map((goal) => ({
+        id: goal.id,
+        name: goal.name ?? 'Meta de economia',
+        progress: Number(goal.target_amount) > 0 ? (Number(goal.current_amount) / Number(goal.target_amount)) * 100 : 0
+      }))
+      .sort((a, b) => b.progress - a.progress)
+      .slice(0, 3);
+
+    summary.goals_snapshot = {
+      active_savings_goals: savings.length,
+      exceeded_spend_limits: exceededCategories.length,
+      top_savings_goals: topSavingsGoals,
+      exceeded_categories: exceededCategories
+    };
 
     if (process.env.NODE_ENV !== 'production') {
       console.info('[dashboard.summary.raw]', summary);
