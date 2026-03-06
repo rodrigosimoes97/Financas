@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { Transaction, EntryType } from '@/types/models';
+import { Transaction, EntryType, PaymentMethod } from '@/types/models';
 
 const YMD_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -45,6 +45,13 @@ export const getMonthStartISO = (date: Date) =>
   new Date(Date.UTC(date.getFullYear(), date.getMonth(), 1)).toISOString().slice(0, 10);
 
 export const typeToLabel = (type: EntryType) => (type === 'income' ? 'Receita' : 'Despesa');
+export const paymentMethodToLabel = (method?: PaymentMethod | null) => {
+  if (method === 'credit') return 'Crédito';
+  if (method === 'debit') return 'Débito';
+  if (method === 'cash') return 'Dinheiro';
+  return 'Pix';
+};
+
 
 export const calculateMonthlyTotals = (transactions: Transaction[]) => {
   const income = transactions

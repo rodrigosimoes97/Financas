@@ -62,9 +62,16 @@ export async function updateTransaction(id: string, formData: FormData): Promise
   };
 
   const paymentMethod = formData.get('payment_method');
+  const creditCardId = String(formData.get('credit_card_id') || '');
+  const updatePayload = paymentMethod ? { ...payload, payment_method: String(paymentMethod) } : payload;
+
   const { error } = await supabase
     .from('transactions')
-    .update(paymentMethod ? { ...payload, payment_method: String(paymentMethod) } : payload)
+    .update(
+      paymentMethod && String(paymentMethod) === 'credit'
+        ? { ...updatePayload, credit_card_id: creditCardId || null }
+        : { ...updatePayload, credit_card_id: null }
+    )
     .eq('id', id);
 
   if (error) return { ok: false, error: error.message };

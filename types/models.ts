@@ -32,12 +32,17 @@ export interface Transaction {
   date: string;
   created_at: string;
   parent_transaction_id?: string | null;
+  credit_card_id?: string | null;
+  installment_group_id?: string | null;
   is_installment?: boolean;
+  installment_number?: number | null;
   total_installments?: number | null;
+  installment_total?: number | null;
   installments_total?: number | null;
   installment_index?: number | null;
   category?: Pick<Category, 'name' | 'type'>;
   account?: Pick<Account, 'name'>;
+  credit_card?: { name?: string };
 }
 
 export interface Goal {

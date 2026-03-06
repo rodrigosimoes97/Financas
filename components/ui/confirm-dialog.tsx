@@ -1,19 +1,21 @@
 'use client';
 
 import * as Dialog from '@radix-ui/react-dialog';
+import { ReactNode } from 'react';
 import { ptBR } from '@/lib/i18n/pt-BR';
 
 interface ConfirmDialogProps {
   triggerLabel: string;
   onConfirm: () => Promise<void>;
   triggerClassName?: string;
+  triggerNode?: ReactNode;
 }
 
-export function ConfirmDialog({ triggerLabel, onConfirm, triggerClassName }: ConfirmDialogProps) {
+export function ConfirmDialog({ triggerLabel, onConfirm, triggerClassName, triggerNode }: ConfirmDialogProps) {
   return (
     <Dialog.Root>
       <Dialog.Trigger asChild>
-        <button type="button" className={triggerClassName}>{triggerLabel}</button>
+        <button type="button" className={triggerClassName} aria-label={triggerLabel || 'Confirmar ação'}>{triggerNode ?? triggerLabel}</button>
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/70" />
