@@ -1,125 +1,172 @@
 'use server';
 
-import { unstable_noStore as noStore } from 'next/cache';
+import { unstable_cache, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-
-export interface DashboardInsight {
-  emoji: string;
-  level: 'info' | 'warn';
-  text: string;
-}
-
-export interface DashboardSummary {
-  income_total: number;
-  expense_total: number;
-  expense_by_category: Record<string, number>;
-  balance_total: number;
-  cards: Array<{
-    card_id: string;
-    card_name: string;
-    current_invoice_total: number;
-    next_invoice_total: number;
-    closing_date: string;
-    due_date: string;
-    limit_used: number;
-    limit_available: number | null;
-  }>;
-  category_spend: Array<{ category_id: string; name: string; total: number }>;
-  upcoming_payments: Array<{ label: string; due_date: string; amount: number; source_type: string }>;
-  free_money_estimate: number;
-  recent_transactions: Array<{
-    id: string;
-    date: string;
-    title: string;
-    amount: number;
-    category: string;
-    payment_method: string;
-    card_name?: string;
-    installment_index?: number;
-    installment_total?: number;
-  }>;
-}
+import { createAdminClient } from '@/lib/supabase/admin';
 
 const MONTH_REGEX = /^\d{4}-\d{2}$/;
 
-const normalizeMonthInput = (month: string) => {
-  if (!MONTH_REGEX.test(month)) return null;
-  return `${month}-01`;
+export interface DashboardInsight {
+  id: string;
+  severity: 'info' | 'warn' | 'critical';
+  title: string;
+  message: string;
+  metric_value: number | null;
+  delta_value: number | null;
+  cta_label?: string | null;
+  cta_route?: string | null;
+}
+
+export interface DashboardSummaryPayload {
+  forecast: {
+    spent_so_far: number;
+    days_elapsed: number;
+    days_in_month: number;
+    daily_avg: number;
+    projected_spent: number;
+    projected_remaining_budget: number | null;
+    projected_savings: number;
+    confidence: 'low' | 'medium' | 'high';
+  };
+  spending_breakdown: {
+    total_expenses: number;
+    total_income: number;
+    net: number;
+    categories: Array<{ category_id: string | null; category_name: string; total: number; percentage: number }>;
+    essentials_total: number;
+    non_essentials_total: number;
+    payment_mix: Array<{ payment_type: string; total: number; percentage: number }>;
+    credit_cards_total: number;
+    accounts_total: number;
+  };
+  insights: Array<{
+    id: string;
+    severity: 'info' | 'warn' | 'critical';
+    title: string;
+    message: string;
+    metric_value: number | null;
+    delta_value: number | null;
+    cta_label?: string | null;
+    cta_route?: string | null;
+  }>;
+  investment_goals: Array<{
+    goal_id: string;
+    name: string;
+    target_amount: number;
+    current_amount: number;
+    contributed_this_month: number;
+    remaining_amount: number;
+    months_to_target: number | null;
+    required_monthly_contribution: number | null;
+    status: 'on_track' | 'behind' | 'ahead';
+  }>;
+  expenses_by_category: Array<{ category_id: string; name: string; total: number }>;
+  invoices_summary: Array<{ card_id: string; card_name: string; current_invoice_total: number; next_invoice_total: number }>;
+}
+
+const normalizeMonthInput = (month: string) => (MONTH_REGEX.test(month) ? `${month}-01` : null);
+
+const sumTotals = (values: Array<number>) => values.reduce((acc, value) => acc + (Number.isFinite(value) ? value : 0), 0);
+
+const validateDashboardConsistency = (summary: DashboardSummaryPayload) => {
+  const tolerance = 0.5;
+  const breakdown = summary.spending_breakdown;
+
+  const accountsTotal = Number(breakdown?.accounts_total ?? 0);
+  const creditCardsTotal = Number(breakdown?.credit_cards_total ?? 0);
+  const totalExpenses = Number(breakdown?.total_expenses ?? 0);
+
+  const expectedTotal = accountsTotal + creditCardsTotal;
+  if (Math.abs(expectedTotal - totalExpenses) > tolerance) {
+    console.warn('[dashboard.consistency] accounts_total + credit_cards_total diverge de total_expenses', {
+      accountsTotal,
+      creditCardsTotal,
+      totalExpenses,
+      expectedTotal,
+      possibleCause: 'Dados legados sem invoice_id/reference_month ou transações antigas sem normalização.'
+    });
+  }
+
+  const categoriesSum = sumTotals((breakdown?.categories ?? []).map((item) => Number(item?.total ?? 0)));
+  if (Math.abs(categoriesSum - totalExpenses) > tolerance) {
+    console.warn('[dashboard.consistency] soma de categorias diverge de total_expenses', {
+      categoriesSum,
+      totalExpenses,
+      possibleCause: 'Categorias ausentes/NULL ou dados antigos com categoria removida.'
+    });
+  }
+
+  const paymentMixSum = sumTotals((breakdown?.payment_mix ?? []).map((item) => Number(item?.total ?? 0)));
+  if (Math.abs(paymentMixSum - totalExpenses) > tolerance) {
+    console.warn('[dashboard.consistency] soma do payment_mix diverge de total_expenses', {
+      paymentMixSum,
+      totalExpenses,
+      possibleCause: 'payment_method inconsistente em dados legados.'
+    });
+  }
 };
 
-const getExpenseByCategory = (categorySpend: DashboardSummary['category_spend']) => {
-  return (categorySpend ?? []).reduce<Record<string, number>>((acc, row) => {
-    const categoryId = String(row?.category_id ?? '').trim();
-    if (!categoryId) return acc;
-    const total = Number(row?.total ?? 0);
-    acc[categoryId] = Number.isFinite(total) ? total : 0;
-    return acc;
-  }, {});
-};
+
+const getDashboardSummaryCached = unstable_cache(
+  async (userId: string, monthStart: string, nextMonthStart: string, today: string) => {
+    const admin = createAdminClient();
+    const { data, error } = await admin.rpc('get_dashboard_summary', {
+      p_user_id: userId,
+      p_month_start: monthStart,
+      p_next_month_start: nextMonthStart,
+      p_today: today
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return (data ?? {}) as DashboardSummaryPayload;
+  },
+  ['dashboard-summary-v2'],
+  { revalidate: 45, tags: ['dashboard-summary'] }
+);
 
 export async function getDashboardData(month: string) {
-  noStore();
   const supabase = await createClient();
   const {
     data: { user }
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    return { ok: false as const, error: 'Usuário não autenticado.' };
-  }
+  if (!user) return { ok: false as const, error: 'Usuário não autenticado.' };
 
-  const normalizedMonth = normalizeMonthInput(month);
-  if (!normalizedMonth) {
-    return { ok: false as const, error: 'Mês inválido.' };
-  }
+  const monthStart = normalizeMonthInput(month);
+  if (!monthStart) return { ok: false as const, error: 'Mês inválido.' };
 
-  const monthStart = new Date(`${normalizedMonth}T00:00:00.000Z`);
-  const nextMonthStart = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 1));
-  const nextMonth = nextMonthStart.toISOString().slice(0, 10);
+  const monthDate = new Date(`${monthStart}T00:00:00.000Z`);
+  const nextMonthStart = new Date(Date.UTC(monthDate.getUTCFullYear(), monthDate.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
 
   await supabase.rpc('generate_pending_recurring_transactions', { p_user_id: user.id });
 
-  const [summaryResult, insightsResult, goalsResult, expenseByCategoryResult] = await Promise.all([
-    supabase.rpc('get_dashboard_summary', { p_user_id: user.id, p_month: normalizedMonth }),
-    supabase.rpc('get_dashboard_insights', { p_user_id: user.id, p_month: normalizedMonth }),
-    supabase
-      .from('goals')
-      .select('id,name,target_amount,current_amount,monthly_limit,month,type,deadline,category_id,category:categories(name)', { count: 'exact' })
-      .gte('month', normalizedMonth)
-      .lt('month', nextMonth)
-      .order('created_at', { ascending: false }),
-    supabase.rpc('get_expense_by_category', {
-      p_user_id: user.id,
-      p_month_start: normalizedMonth,
-      p_next_month_start: nextMonth
-    })
-  ]);
+  if (process.env.NODE_ENV !== 'production') {
+    const [userCtx, serviceCtx] = await Promise.all([
+      supabase.rpc('debug_request_context'),
+      createAdminClient().rpc('debug_request_context')
+    ]);
+    console.info('[dashboard.debug_request_context:user]', userCtx.data ?? userCtx.error?.message ?? null);
+    console.info('[dashboard.debug_request_context:service]', serviceCtx.data ?? serviceCtx.error?.message ?? null);
+  }
 
-  if (summaryResult.error) return { ok: false as const, error: summaryResult.error.message };
-  if (insightsResult.error) return { ok: false as const, error: insightsResult.error.message };
-  if (goalsResult.error) return { ok: false as const, error: goalsResult.error.message };
-  if (expenseByCategoryResult.error) return { ok: false as const, error: expenseByCategoryResult.error.message };
+  try {
+    const summary = await getDashboardSummaryCached(user.id, monthStart, nextMonthStart, today);
 
-  const summary = (summaryResult.data ?? {}) as DashboardSummary;
-  const rpcExpenseByCategory = Array.isArray(expenseByCategoryResult.data)
-    ? expenseByCategoryResult.data.reduce<Record<string, number>>((acc, row) => {
-        const categoryId = String(row?.category_id ?? '').trim();
-        if (!categoryId) return acc;
-        const amount = Number(row?.amount ?? 0);
-        acc[categoryId] = Number.isFinite(amount) ? amount : 0;
-        return acc;
-      }, {})
-    : null;
+    if (process.env.NODE_ENV !== 'production') {
+      console.info('[dashboard.summary.raw]', summary);
+      validateDashboardConsistency(summary);
+    }
 
-  return {
-    ok: true as const,
-    summary: {
-      ...summary,
-      expense_total: Number(summary.expense_total ?? 0),
-      expense_by_category: rpcExpenseByCategory ?? getExpenseByCategory(summary.category_spend)
-    },
-    insights: (insightsResult.data ?? []) as DashboardInsight[],
-    goal: goalsResult.data?.[0] ?? null,
-    goalCount: goalsResult.count ?? goalsResult.data?.length ?? 0
-  };
+    return { ok: true as const, summary };
+  } catch (error) {
+    return { ok: false as const, error: error instanceof Error ? error.message : 'Erro ao carregar dashboard.' };
+  }
+}
+
+export async function invalidateDashboardCache() {
+  revalidateTag('dashboard-summary');
 }
