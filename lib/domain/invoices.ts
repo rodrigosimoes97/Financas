@@ -1,0 +1,3 @@
+import { addMonthsUTC, startOfMonthUTC } from '@/lib/domain/date';
+export function resolveInvoiceReferenceMonth(purchaseDateISO: string, closingDay: number): Date { const purchaseDate = new Date(`${purchaseDateISO}T00:00:00.000Z`); const baseMonth = startOfMonthUTC(purchaseDate); return purchaseDate.getUTCDate() <= closingDay ? baseMonth : addMonthsUTC(baseMonth, 1); }
+export function getInvoiceStatus(dueDateISO: string, paidAmount: number, totalAmount: number): 'open' | 'paid' | 'overdue' { if (paidAmount >= totalAmount) return 'paid'; const dueDate = new Date(`${dueDateISO}T00:00:00.000Z`); return new Date() > dueDate ? 'overdue' : 'open'; }

@@ -5,6 +5,7 @@ import { ptBR } from '@/lib/i18n/pt-BR';
 import { TransactionsManager } from '@/components/forms/transactions-manager';
 import Link from 'next/link';
 import { Transaction } from '@/types/models';
+import { parseMonthFilter } from '@/lib/validation/schemas';
 
 const PAGE_SIZE = 50;
 
@@ -28,8 +29,9 @@ export default async function TransactionsPage({
   const to = from + PAGE_SIZE - 1;
 
   const now = new Date();
-  const monthValue = searchParams?.month?.match(/^\d{4}-\d{2}$/)
-    ? searchParams.month
+  const parsedMonth = searchParams?.month ? parseMonthFilter(searchParams.month) : null;
+  const monthValue = parsedMonth
+    ? parsedMonth
     : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
   const monthStart = `${monthValue}-01`;

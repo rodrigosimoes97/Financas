@@ -3,8 +3,8 @@
 import { unstable_cache, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-
-const MONTH_REGEX = /^\d{4}-\d{2}$/;
+import { parseMonthToDate, formatDateISO, addMonthsUTC } from '@/lib/domain/date';
+import { calculateDashboardTotals } from '@/lib/domain/dashboard';
 
 export interface DashboardInsight {
   id: string;
@@ -63,6 +63,16 @@ export interface DashboardSummaryPayload {
   expenses_by_category: Array<{ category_id: string; name: string; total: number }>;
   invoices_summary: Array<{ card_id: string; card_name: string; current_invoice_total: number; next_invoice_total: number }>;
 
+
+  core_totals?: {
+    saldoAtual: number;
+    saldoPrevisto: number;
+    receitasMes: number;
+    despesasMes: number;
+    faturasAbertas: number;
+    despesasComprometidas: number;
+  };
+
   goals_snapshot: {
     active_savings_goals: number;
     exceeded_spend_limits: number;
@@ -70,8 +80,6 @@ export interface DashboardSummaryPayload {
     exceeded_categories: Array<{ goal_id: string; category_name: string; exceeded_by: number }>;
   };
 }
-
-const normalizeMonthInput = (month: string) => (MONTH_REGEX.test(month) ? `${month}-01` : null);
 
 const sumTotals = (values: Array<number>) => values.reduce((acc, value) => acc + (Number.isFinite(value) ? value : 0), 0);
 
@@ -142,11 +150,11 @@ export async function getDashboardData(month: string) {
 
   if (!user) return { ok: false as const, error: 'Usuário não autenticado.' };
 
-  const monthStart = normalizeMonthInput(month);
-  if (!monthStart) return { ok: false as const, error: 'Mês inválido.' };
+  const monthDate = parseMonthToDate(month);
+  if (!monthDate) return { ok: false as const, error: 'Mês inválido.' };
 
-  const monthDate = new Date(`${monthStart}T00:00:00.000Z`);
-  const nextMonthStart = new Date(Date.UTC(monthDate.getUTCFullYear(), monthDate.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
+  const monthStart = formatDateISO(monthDate);
+  const nextMonthStart = formatDateISO(addMonthsUTC(monthDate, 1));
   const today = new Date().toISOString().slice(0, 10);
 
   await supabase.rpc('generate_pending_recurring_transactions', { p_user_id: user.id });
@@ -199,12 +207,21 @@ export async function getDashboardData(month: string) {
       exceeded_categories: exceededCategories
     };
 
+    const coreTotals = calculateDashboardTotals({
+      currentBalance: Number(summary.spending_breakdown.net ?? 0),
+      monthIncome: Number(summary.spending_breakdown.total_income ?? 0),
+      monthExpense: Number(summary.spending_breakdown.total_expenses ?? 0),
+      creditOpenTotal: Number(summary.spending_breakdown.credit_cards_total ?? 0),
+      committedFutureExpense: Number(summary.forecast.projected_spent ?? 0)
+    });
+
     if (process.env.NODE_ENV !== 'production') {
       console.info('[dashboard.summary.raw]', summary);
+      console.info('[dashboard.core_totals]', coreTotals);
       validateDashboardConsistency(summary);
     }
 
-    return { ok: true as const, summary };
+    return { ok: true as const, summary: { ...summary, core_totals: coreTotals } };
   } catch (error) {
     return { ok: false as const, error: error instanceof Error ? error.message : 'Erro ao carregar dashboard.' };
   }

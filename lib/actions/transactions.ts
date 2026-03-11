@@ -3,9 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { invalidateDashboardCache } from '@/lib/actions/dashboard';
+import { parseTransactionForm } from '@/lib/validation/schemas';
 
 type ActionResult = { ok: boolean; message?: string; error?: string };
-
 
 async function recalculateSpendLimitsForUser(userId: string) {
   const supabase = await createClient();
@@ -14,39 +14,36 @@ async function recalculateSpendLimitsForUser(userId: string) {
 
 export async function createTransaction(formData: FormData): Promise<ActionResult> {
   const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'Usuário não autenticado.' };
 
-  const paymentMethod = String(formData.get('payment_method'));
-  if (paymentMethod === 'credit') {
+  const parsed = parseTransactionForm(formData);
+  if (!parsed.ok) return { ok: false, error: parsed.error };
+  const input = parsed.data;
+
+  if (input.payment_method === 'credit') {
     const { error } = await supabase.rpc('create_credit_purchase', {
-      p_account_id: String(formData.get('account_id')),
-      p_category_id: String(formData.get('category_id')),
-      p_credit_card_id: String(formData.get('credit_card_id')),
-      p_purchase_date: String(formData.get('date')),
-      p_description: String(formData.get('description') || ''),
-      p_total_amount: Number(formData.get('amount')),
-      p_total_installments:
-        String(formData.get('is_installment')) === 'true' ? Number(formData.get('total_installments') || 1) : 1
+      p_account_id: input.account_id,
+      p_category_id: input.category_id,
+      p_credit_card_id: input.credit_card_id,
+      p_purchase_date: input.date,
+      p_description: input.description,
+      p_total_amount: input.amount,
+      p_total_installments: input.total_installments
     });
     if (error) return { ok: false, error: error.message };
   } else {
-    const payload = {
+    const { error } = await supabase.from('transactions').insert({
       user_id: user.id,
-      account_id: String(formData.get('account_id')),
-      category_id: String(formData.get('category_id')),
-      amount: Number(formData.get('amount')),
-      type: String(formData.get('type')),
-      payment_method: paymentMethod,
-      description: String(formData.get('description') || ''),
-      date: String(formData.get('date'))
-    };
-
-    const { error } = await supabase.from('transactions').insert(payload);
-      if (error) return { ok: false, error: error.message };
+      account_id: input.account_id,
+      category_id: input.category_id,
+      amount: input.amount,
+      type: input.type,
+      payment_method: input.payment_method,
+      description: input.description,
+      date: input.date
+    });
+    if (error) return { ok: false, error: error.message };
   }
 
   await recalculateSpendLimitsForUser(user.id);
@@ -59,33 +56,27 @@ export async function createTransaction(formData: FormData): Promise<ActionResul
 
 export async function updateTransaction(id: string, formData: FormData): Promise<ActionResult> {
   const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'Usuário não autenticado.' };
 
-  const payload = {
-    account_id: String(formData.get('account_id')),
-    category_id: String(formData.get('category_id')),
-    amount: Number(formData.get('amount')),
-    type: String(formData.get('type')),
-    description: String(formData.get('description') || ''),
-    date: String(formData.get('date'))
-  };
-
-  const paymentMethod = formData.get('payment_method');
-  const creditCardId = String(formData.get('credit_card_id') || '');
-  const updatePayload = paymentMethod ? { ...payload, payment_method: String(paymentMethod) } : payload;
+  const parsed = parseTransactionForm(formData);
+  if (!parsed.ok) return { ok: false, error: parsed.error };
+  const input = parsed.data;
 
   const { error } = await supabase
     .from('transactions')
-    .update(
-      paymentMethod && String(paymentMethod) === 'credit'
-        ? { ...updatePayload, credit_card_id: creditCardId || null }
-        : { ...updatePayload, credit_card_id: null }
-    )
-    .eq('id', id);
+    .update({
+      account_id: input.account_id,
+      category_id: input.category_id,
+      amount: input.amount,
+      type: input.type,
+      payment_method: input.payment_method,
+      description: input.description,
+      date: input.date,
+      credit_card_id: input.payment_method === 'credit' ? input.credit_card_id : null
+    })
+    .eq('id', id)
+    .eq('user_id', user.id);
 
   if (error) return { ok: false, error: error.message };
 
@@ -98,17 +89,10 @@ export async function updateTransaction(id: string, formData: FormData): Promise
 
 export async function deleteTransaction(id: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'Usuário não autenticado.' };
 
-  const { error } = await supabase.rpc('delete_transaction_cascade', {
-    p_transaction_id: id,
-    p_user_id: user.id
-  });
-
+  const { error } = await supabase.rpc('delete_transaction_cascade', { p_transaction_id: id, p_user_id: user.id });
   if (error) return { ok: false, error: error.message };
 
   await recalculateSpendLimitsForUser(user.id);

@@ -1,0 +1,3 @@
+import { addMoney, subtractMoney } from '@/lib/domain/money';
+export interface DashboardTotalsInput { monthIncome: number; monthExpense: number; creditOpenTotal: number; committedFutureExpense: number; currentBalance: number; }
+export function calculateDashboardTotals(input: DashboardTotalsInput) { const saldoPrevisto = subtractMoney(addMoney(input.currentBalance, input.monthIncome), input.monthExpense, input.creditOpenTotal, input.committedFutureExpense); return { saldoAtual: input.currentBalance, saldoPrevisto, receitasMes: input.monthIncome, despesasMes: input.monthExpense, faturasAbertas: input.creditOpenTotal, despesasComprometidas: input.committedFutureExpense }; }
