@@ -1,5 +1,5 @@
 export type EntryType = 'income' | 'expense';
-export type PaymentMethod = 'credit' | 'debit' | 'pix' | 'cash';
+export type PaymentMethod = 'credit' | 'debit' | 'pix' | 'cash' | 'transfer';
 export type GoalType = 'SAVINGS_GOAL' | 'SPEND_LIMIT';
 
 export interface Account {
@@ -30,6 +30,11 @@ export interface Transaction {
   payment_method?: PaymentMethod;
   description: string | null;
   date: string;
+  competency_month?: string | null;
+  effective_date?: string | null;
+  posted_at?: string | null;
+  deleted_at?: string | null;
+  metadata?: Record<string, unknown>;
   created_at: string;
   parent_transaction_id?: string | null;
   credit_card_id?: string | null;

@@ -1,81 +1,50 @@
 # Finanças MVP
 
-Personal Finance MVP built with Next.js 14 App Router + Supabase.
+Personal finance app com Next.js 14 + Supabase, pronto para deploy principal no **Vercel + Supabase**.
 
 ## Features
 
-- Email/password authentication with Supabase Auth
-- Secure multi-tenant data with Row Level Security
-- Transactions CRUD
-- Categories CRUD
-- Goals CRUD (monthly limits per category)
-- Monthly dashboard with:
-  - Total income
-  - Total expenses
-  - Current balance
-  - Expense pie chart by category
-- Dark mode UI by default
-- Responsive layout + sidebar navigation + quick-add transaction modal
+- Autenticação por email/senha (Supabase Auth)
+- Multi-tenant com RLS
+- CRUD de transações, categorias, contas, cartões, metas
+- Fluxo de cartão de crédito com parcelas/faturas
+- Dashboard mensal consolidado
+- Soft delete e trilha de auditoria para transações
 
-## Tech Stack
+## Stack
 
-- Next.js 14 + TypeScript
-- Supabase (Auth + Postgres)
-- Tailwind CSS
-- Recharts
-- Radix Dialog
+- Next.js 14 + TypeScript + App Router
+- Supabase (Auth + Postgres + RLS)
+- Tailwind CSS + Radix UI
 
-## Project Structure
+## Estrutura relevante
 
 ```txt
 app/
-  (auth)/login, signup
-  (app)/dashboard, transactions, categories, goals
 components/
-  dashboard/
-  forms/
-  layout/
 lib/
   actions/
+  domain/
+  validation/
   supabase/
 supabase/migrations/
-types/
+docs/
 ```
 
-## Setup
+## Setup local
 
-1. Install dependencies
+1. `npm install`
+2. Copie `.env.example` para `.env.local` e preencha os valores.
+3. Aplique as migrações do diretório `supabase/migrations` em ordem.
+4. Rode `npm run dev`.
 
-```bash
-npm install
-```
+## Deploy
 
-2. Create `.env.local`
+- Guia: `docs/deployment.md`
+- Segurança: `docs/security.md`
+- Checklist de produção: `docs/production-checklist.md`
 
-```bash
-NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-```
+## Observação de hospedagem
 
-3. Run SQL migration in Supabase SQL editor:
-
-- `supabase/migrations/0001_init_financas.sql`
-
-4. Start app
-
-```bash
-npm run dev
-```
-
-## Security Notes
-
-- All data tables (`accounts`, `categories`, `transactions`, `goals`) have RLS enabled.
-- Policies restrict data access to `auth.uid() = user_id` for select/insert/update/delete.
-- Trigger creates default account + starter categories on user signup.
-
-## Implementation Notes
-
-- Server Components are default for pages and data fetching.
-- Client Components are only used for interactive chart + modal.
-- Server Actions are used for CRUD operations.
-- Financial totals are centralized in `lib/utils.ts`.
+- O app dinâmico (server actions/runtime) **não deve** ser convertido para static export.
+- GitHub Pages é opcional para conteúdo estático (`/docs` ou `/marketing`).

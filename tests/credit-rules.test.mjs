@@ -5,13 +5,18 @@ import { resolveInvoiceReferenceMonth, splitInstallments, buildSimulationRows } 
 const iso = (d) => d.toISOString().slice(0, 10);
 
 test('compra até dia de fechamento entra no mês atual', () => {
-  const ref = resolveInvoiceReferenceMonth('2026-03-10', 12);
+  const ref = resolveInvoiceReferenceMonth('2026-03-12', 12);
   assert.equal(iso(ref), '2026-03-01');
 });
 
 test('compra após dia de fechamento entra no mês seguinte', () => {
   const ref = resolveInvoiceReferenceMonth('2026-03-20', 12);
   assert.equal(iso(ref), '2026-04-01');
+});
+
+test('regra é estável com datas no último dia do mês (evita bug UTC/local)', () => {
+  const ref = resolveInvoiceReferenceMonth('2026-01-31', 10);
+  assert.equal(iso(ref), '2026-02-01');
 });
 
 test('parcelado cria N parcelas e última ajusta centavos', () => {
